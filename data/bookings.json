@@ -1,0 +1,24 @@
+{
+  "2026-02-27": {
+    "09:00": {
+      "fullName": "Saavan Asodaria",
+      "email": "savanasondariya@gmail.com",
+      "whatsapp": "9999999999",
+      "notes": "",
+      "date": "2026-02-27",
+      "slot": "09:00",
+      "createdAt": "2026-02-26T18:40:38.741Z",
+      "feesPaid": false
+    },
+    "10:00": {
+      "fullName": "Saavan Asodaria",
+      "email": "savanasondariya@gmail.com",
+      "whatsapp": "9999999999",
+      "notes": "",
+      "date": "2026-02-27",
+      "slot": "10:00",
+      "createdAt": "2026-02-26T20:01:26.194Z",
+      "feesPaid": false
+    }
+  }
+}
