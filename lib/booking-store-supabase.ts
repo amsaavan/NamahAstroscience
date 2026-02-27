@@ -22,17 +22,29 @@ export async function listBookings(date?: string): Promise<BookingRecord[]> {
     return (data ?? []).map(rowToRecord);
 }
 
-export async function createBooking(record: BookingRecord): Promise<{ ok: boolean }> {
-    const { data: existing } = await supabase
+export async function createBooking(record: BookingRecord): Promise<{ ok: boolean; reason?: string }> {
+    // Check if slot is already taken
+    const { data: existingSlot } = await supabase
         .from("bookings").select("slot").eq("date", record.date).eq("slot", record.slot).maybeSingle();
-    if (existing) return { ok: false };
+    if (existingSlot) return { ok: false, reason: "slot_taken" };
+
+    // Check if same person (name + email + whatsapp) already has any booking
+    const { data: existingPerson } = await supabase
+        .from("bookings")
+        .select("slot")
+        .eq("full_name", record.fullName)
+        .eq("email", record.email)
+        .eq("whatsapp", record.whatsapp)
+        .maybeSingle();
+    if (existingPerson) return { ok: false, reason: "duplicate_person" };
+
     const { error } = await supabase.from("bookings").insert({
         date: record.date, slot: record.slot, full_name: record.fullName,
         email: record.email, whatsapp: record.whatsapp, notes: record.notes ?? "",
         created_at: record.createdAt, fees_paid: record.feesPaid ?? false,
     });
     if (error) {
-        if (error.code === "23505") return { ok: false };
+        if (error.code === "23505") return { ok: false, reason: "slot_taken" };
         throw new Error(error.message);
     }
     return { ok: true };

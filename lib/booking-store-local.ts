@@ -43,14 +43,29 @@ export async function listBookings(date?: string): Promise<BookingRecord[]> {
     );
 }
 
-export async function createBooking(record: BookingRecord) {
-    const run = async () => {
+export async function createBooking(record: BookingRecord): Promise<{ ok: boolean; reason?: string }> {
+    const run = async (): Promise<{ ok: boolean; reason?: string }> => {
         const store = await readStore();
         const day = store[record.date] ?? {};
-        if (day[record.slot]) return { ok: false as const };
+        if (day[record.slot]) return { ok: false, reason: "slot_taken" };
+
+        // Check duplicate person across all dates
+        for (const dateKey of Object.keys(store)) {
+            for (const slotKey of Object.keys(store[dateKey])) {
+                const b = store[dateKey][slotKey];
+                if (
+                    b.fullName === record.fullName &&
+                    b.email === record.email &&
+                    b.whatsapp === record.whatsapp
+                ) {
+                    return { ok: false, reason: "duplicate_person" };
+                }
+            }
+        }
+
         store[record.date] = { ...day, [record.slot]: record };
         await writeStore(store);
-        return { ok: true as const };
+        return { ok: true };
     };
     const next = writeQueue.then(run);
     writeQueue = next.then(() => undefined, () => undefined);

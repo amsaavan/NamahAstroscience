@@ -107,6 +107,12 @@ export async function POST(request: NextRequest) {
   try {
     const result = await createBooking(booking);
     if (!result.ok) {
+      if (result.reason === "duplicate_person") {
+        return NextResponse.json(
+          { error: "You have already made a booking. Only one booking per person is allowed." },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: "This slot is already booked. Please choose another." },
         { status: 409 }
