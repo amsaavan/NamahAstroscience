@@ -275,6 +275,7 @@ export default function AstrologerWebsite() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
   const [whatsapp, setWhatsapp] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -575,13 +576,40 @@ export default function AstrologerWebsite() {
                 />
               </div>
 
-              <Input
-                className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
-                placeholder="WhatsApp Number"
-                inputMode="tel"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <select
+                  className="tokyo-control tokyo-select font-body shrink-0 rounded-xl border border-[var(--tokyo-line)] px-2 py-3 text-sm outline-none"
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  style={{ minWidth: "90px" }}
+                >
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+61">🇦🇺 +61</option>
+                  <option value="+1-CA">🇨🇦 +1</option>
+                  <option value="+65">🇸🇬 +65</option>
+                  <option value="+60">🇲🇾 +60</option>
+                  <option value="+64">🇳🇿 +64</option>
+                  <option value="+27">🇿🇦 +27</option>
+                  <option value="+49">🇩🇪 +49</option>
+                  <option value="+33">🇫🇷 +33</option>
+                  <option value="+81">🇯🇵 +81</option>
+                  <option value="+86">🇨🇳 +86</option>
+                  <option value="+92">🇵🇰 +92</option>
+                  <option value="+880">🇧🇩 +880</option>
+                  <option value="+94">🇱🇰 +94</option>
+                  <option value="+977">🇳🇵 +977</option>
+                </select>
+                <Input
+                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  placeholder="WhatsApp Number"
+                  inputMode="tel"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
 
               <div className="space-y-2">
                 <label className="font-body block text-xs uppercase tracking-[0.16em] text-[var(--tokyo-muted)]">
@@ -720,7 +748,7 @@ export default function AstrologerWebsite() {
                       body: JSON.stringify({
                         fullName,
                         email,
-                        whatsapp,
+                        whatsapp: `${countryCode.replace("-CA", "")} ${whatsapp}`.trim(),
                         notes,
                         date: selectedDate,
                         slot: selectedSlot,

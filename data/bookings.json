@@ -19,6 +19,38 @@
       "slot": "10:00",
       "createdAt": "2026-02-26T20:01:26.194Z",
       "feesPaid": false
+    },
+    "12:00": {
+      "fullName": "Saavan Asodaria",
+      "email": "savanasondariya@gmail.com",
+      "whatsapp": "+1 9999999999",
+      "notes": "",
+      "date": "2026-02-27",
+      "slot": "12:00",
+      "createdAt": "2026-02-27T06:57:22.000Z",
+      "feesPaid": false
+    }
+  },
+  "2026-02-28": {
+    "09:00": {
+      "fullName": "Saavan Asodaria",
+      "email": "savanasondariya@gmail.com",
+      "whatsapp": "+91 9025782770",
+      "notes": "",
+      "date": "2026-02-28",
+      "slot": "09:00",
+      "createdAt": "2026-02-27T06:58:04.313Z",
+      "feesPaid": false
+    },
+    "10:00": {
+      "fullName": "Saavan Asodaria",
+      "email": "savanasondariya@gmail.com",
+      "whatsapp": "+1 9025782770",
+      "notes": "",
+      "date": "2026-02-28",
+      "slot": "10:00",
+      "createdAt": "2026-02-27T06:58:14.795Z",
+      "feesPaid": false
     }
   }
 }
