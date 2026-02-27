@@ -17,6 +17,10 @@ const barlowCondensed = Barlow_Condensed({
 export const metadata: Metadata = {
   title: "Namah Astroscience",
   description: "Vedic astrology consultations and guidance.",
+  icons: {
+    icon: "/logo.jpeg",
+    apple: "/logo.jpeg",
+  },
 };
 
 export default function RootLayout({
