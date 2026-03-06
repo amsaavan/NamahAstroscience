@@ -350,9 +350,22 @@ export default function AstrologerWebsite() {
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
+  /** Current time in minutes since midnight (refreshed on each render by useMemo) */
+  const currentTimeMinutes = useMemo(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }, []);
+
+  const isSlotPast = (slot: string): boolean => {
+    if (selectedDate !== today) return false;
+    const [hStr, mStr] = slot.split(":");
+    const slotMinutes = Number(hStr) * 60 + Number(mStr);
+    return currentTimeMinutes >= slotMinutes;
+  };
+
   const maxDate = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 7);
+    d.setFullYear(d.getFullYear() + 1); // allow booking up to 1 year in advance
     const yyyy = String(d.getFullYear());
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -635,7 +648,7 @@ export default function AstrologerWebsite() {
                     if (nextDate && nextDate > maxDate) {
                       setSelectedDate("");
                       setBookedSlots([]);
-                      setDateError("Bookings are only accepted up to 7 days in advance.");
+                      setDateError("Please select a date within the next year.");
                       return;
                     }
                     setDateError("");
@@ -687,10 +700,12 @@ export default function AstrologerWebsite() {
                   </option>
                   {DAILY_SLOTS.map((slot) => {
                     const isBooked = bookedSlotsForDay.has(slot);
+                    const isPast = isSlotPast(slot);
+                    const isUnavailable = isBooked || isPast;
                     return (
-                      <option key={slot} value={slot} disabled={isBooked}>
+                      <option key={slot} value={slot} disabled={isUnavailable}>
                         {slotLabel(slot)}
-                        {isBooked ? " (Booked)" : ""}
+                        {isBooked ? " (Booked)" : isPast ? " (Passed)" : ""}
                       </option>
                     );
                   })}
@@ -736,6 +751,13 @@ export default function AstrologerWebsite() {
                   }
                   if (!selectedSlot) {
                     setStatusMessage("Please pick an available time slot.");
+                    return;
+                  }
+                  if (isSlotPast(selectedSlot)) {
+                    setStatusMessage(
+                      "This time slot has already passed. Please choose a future slot."
+                    );
+                    setSelectedSlot("");
                     return;
                   }
 
