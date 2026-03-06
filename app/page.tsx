@@ -365,7 +365,7 @@ export default function AstrologerWebsite() {
 
   const maxDate = useMemo(() => {
     const d = new Date();
-    d.setFullYear(d.getFullYear() + 1); // allow booking up to 1 year in advance
+    d.setDate(d.getDate() + 7);
     const yyyy = String(d.getFullYear());
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -648,7 +648,7 @@ export default function AstrologerWebsite() {
                     if (nextDate && nextDate > maxDate) {
                       setSelectedDate("");
                       setBookedSlots([]);
-                      setDateError("Please select a date within the next year.");
+                      setDateError("Bookings are only accepted up to 7 days in advance.");
                       return;
                     }
                     setDateError("");
