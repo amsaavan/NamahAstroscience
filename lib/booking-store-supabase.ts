@@ -42,6 +42,10 @@ export async function createBooking(record: BookingRecord): Promise<{ ok: boolea
         date: record.date, slot: record.slot, full_name: record.fullName,
         email: record.email, whatsapp: record.whatsapp, notes: record.notes ?? "",
         created_at: record.createdAt, fees_paid: record.feesPaid ?? false,
+        completed: record.completed ?? false,
+        birth_date: record.birthDate ?? "",
+        birth_time: record.birthTime ?? "",
+        birth_place: record.birthPlace ?? "",
     });
     if (error) {
         if (error.code === "23505") return { ok: false, reason: "slot_taken" };
@@ -68,11 +72,24 @@ export async function updateFeesPaid(date: string, slot: string, feesPaid: boole
     return { ok: true };
 }
 
+export async function updateBookingCompleted(date: string, slot: string, completed: boolean): Promise<{ ok: boolean }> {
+    const { data: existing } = await supabase
+        .from("bookings").select("slot").eq("date", date).eq("slot", slot).maybeSingle();
+    if (!existing) return { ok: false };
+    const { error } = await supabase.from("bookings").update({ completed }).eq("date", date).eq("slot", slot);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+}
+
 function rowToRecord(row: Record<string, unknown>): BookingRecord {
     return {
         date: row.date as string, slot: row.slot as string,
         fullName: row.full_name as string, email: row.email as string,
         whatsapp: row.whatsapp as string, notes: (row.notes as string) ?? "",
         createdAt: row.created_at as string, feesPaid: (row.fees_paid as boolean) ?? false,
+        completed: (row.completed as boolean) ?? false,
+        birthDate: (row.birth_date as string) ?? "",
+        birthTime: (row.birth_time as string) ?? "",
+        birthPlace: (row.birth_place as string) ?? "",
     };
 }

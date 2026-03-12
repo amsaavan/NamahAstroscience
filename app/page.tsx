@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -285,6 +285,10 @@ export default function AstrologerWebsite() {
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateError, setDateError] = useState<string>("");
+  // Birth details — optional, for Kundali
+  const [birthDate, setBirthDate] = useState("");
+  const [birthTime, setBirthTime] = useState("");
+  const [birthPlace, setBirthPlace] = useState("");
 
   useEffect(() => {
     if (!selectedDate) {
@@ -413,12 +417,7 @@ export default function AstrologerWebsite() {
             </div>
           </div>
 
-          <Link
-            href="/admin/login"
-            className="neo-btn font-body rounded-lg border border-[var(--tokyo-neon)] px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] shadow-[0_0_14px_rgba(244,196,48,0.25)]"
-          >
-            <span>Admin Login</span>
-          </Link>
+
         </div>
       </header>
 
@@ -712,6 +711,43 @@ export default function AstrologerWebsite() {
                 </select>
               </div>
 
+              {/* Birth Details Section */}
+              <div className="rounded-xl border border-[var(--tokyo-line)] p-5 space-y-4" style={{ background: 'rgba(244,196,48,0.04)' }}>
+                <div>
+                  <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details <span className="normal-case text-[var(--tokyo-muted)] tracking-normal">(Optional — for Kundali chart)</span></p>
+                  <p className="font-body text-xs text-[var(--tokyo-muted)]">Share your birth details to allow a personalised Kundali reading.</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Date of Birth</label>
+                    <Input
+                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Time of Birth</label>
+                    <Input
+                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                      type="time"
+                      value={birthTime}
+                      onChange={(e) => setBirthTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Place of Birth</label>
+                  <Input
+                    className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                    placeholder="City / Town (e.g. Mumbai, India)"
+                    value={birthPlace}
+                    onChange={(e) => setBirthPlace(e.target.value)}
+                  />
+                </div>
+              </div>
+
               <Textarea
                 className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
                 placeholder="Your Question / Notes (Optional)"
@@ -774,6 +810,9 @@ export default function AstrologerWebsite() {
                         notes,
                         date: selectedDate,
                         slot: selectedSlot,
+                        birthDate: birthDate || undefined,
+                        birthTime: birthTime || undefined,
+                        birthPlace: birthPlace || undefined,
                       }),
                     });
 
@@ -838,7 +877,7 @@ export default function AstrologerWebsite() {
         </h2>
         <p className="font-body mb-8 text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Feel free to reach out on any of the below</p>
         <p className="font-display text-3xl text-[var(--tokyo-neon)] mb-6">Jinesh Shah</p>
-        <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-3">
+        <div className="mx-auto flex max-w-4xl flex-col flex-wrap justify-center gap-4 md:flex-row">
           <div
             className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em]"
             style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}

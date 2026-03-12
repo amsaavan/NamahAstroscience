@@ -19,6 +19,11 @@ export type BookingRecord = {
   slot: string;
   createdAt: string;
   feesPaid: boolean;
+  // Birth details (optional — for Kundali)
+  birthDate?: string;  // YYYY-MM-DD
+  birthTime?: string;  // HH:MM
+  birthPlace?: string; // City / Town
+  completed?: boolean;
 };
 
 export type BookingsByDate = Record<string, Record<string, BookingRecord>>;

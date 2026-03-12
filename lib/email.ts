@@ -100,6 +100,13 @@ export async function sendBookingConfirmation(
                         <span style="font-size:15px;color:#e2e8f0;">${booking.notes}</span>
                       </td>
                     </tr>` : ""}
+                    ${booking.birthDate ? `
+                    <tr>
+                      <td style="padding:10px 0;border-top:1px solid #1e2a45;">
+                        <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Birth Details</span><br>
+                        <span style="font-size:14px;color:#e2e8f0;">${booking.birthDate}${booking.birthTime ? " at " + booking.birthTime : ""}${booking.birthPlace ? " · " + booking.birthPlace : ""}</span>
+                      </td>
+                    </tr>` : ""}
                   </table>
                 </td>
               </tr>
@@ -250,10 +257,15 @@ export async function sendAdminBookingNotification(
                     <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Time</td>
                     <td style="font-size:15px;color:#f4c430;font-weight:600;padding:6px 0;">${timeLabel}</td>
                   </tr>
-                  ${booking.notes ? `
+                   ${booking.notes ? `
                   <tr>
                     <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;vertical-align:top;">Notes</td>
                     <td style="font-size:14px;color:#e2e8f0;padding:6px 0;">${booking.notes}</td>
+                  </tr>` : ""}
+                  ${booking.birthDate ? `
+                  <tr>
+                    <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;vertical-align:top;">Birth Details</td>
+                    <td style="font-size:14px;color:#a78bfa;font-weight:600;padding:6px 0;">${booking.birthDate}${booking.birthTime ? " at " + booking.birthTime : ""}${booking.birthPlace ? " · " + booking.birthPlace : ""}</td>
                   </tr>` : ""}
                   <tr>
                     <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Booked At</td>
@@ -308,6 +320,62 @@ export async function sendAdminBookingNotification(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[email] sendAdminBookingNotification failed:", message);
+    return { sent: false, reason: message };
+  }
+}
+
+// ─── Admin OTP Email ─────────────────────────────────────────────────────────
+
+export async function sendAdminOtp(otp: string): Promise<SendOutcome> {
+  if (!hasSmtpConfig()) return { sent: false, reason: "smtp_not_configured" };
+  if (!hasAdminEmailConfig()) return { sent: false, reason: "admin_email_not_configured" };
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#060B1A;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060B1A;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#0d1526;border-radius:16px;border:1px solid #1e2a45;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#7A0000,#4a0000);padding:28px 40px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:12px;letter-spacing:3px;color:#f4c430;text-transform:uppercase;">Admin Access</p>
+            <h1 style="margin:0;font-size:22px;font-weight:700;color:#f4c430;letter-spacing:2px;">Namah Astroscience</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;text-align:center;">
+            <p style="margin:0 0 8px;font-size:14px;color:#9ca3af;">Your one-time login code is:</p>
+            <p style="margin:16px auto;font-size:42px;font-weight:800;letter-spacing:10px;color:#f4c430;background:#111a2e;border-radius:12px;padding:18px 32px;border:1px solid #1e2a45;">${otp}</p>
+            <p style="margin:20px 0 0;font-size:13px;color:#6b7280;">Expires in <strong style="color:#e2e8f0;">10 minutes</strong>. Single-use only.</p>
+            <p style="margin:8px 0 0;font-size:12px;color:#4b5563;">If you did not request this, ignore this email.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#070b1a;padding:16px 40px;text-align:center;border-top:1px solid #1e2a45;">
+            <p style="margin:0;font-size:11px;color:#4b5563;letter-spacing:2px;text-transform:uppercase;">Namah Astroscience · Admin System</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: process.env.ADMIN_NOTIFY_EMAIL,
+      subject: `${otp} — Namah Astroscience Admin OTP`,
+      text: `Your admin OTP is: ${otp}\n\nExpires in 10 minutes. Single-use.\nIgnore if you did not request this.`,
+      html,
+    });
+    return { sent: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[email] sendAdminOtp failed:", message);
     return { sent: false, reason: message };
   }
 }

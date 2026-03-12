@@ -1,60 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  ADMIN_SESSION_COOKIE,
-  isAdminConfigValid,
-  isValidSessionToken,
-} from "@/lib/admin-auth";
 
-function unauthorizedApi() {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const COOKIE_NAME = "admin_session";
+
+/**
+ * Edge-compatible JWT verification (Web Crypto API / HMAC-SHA256).
+ * proxy.ts runs on the Edge runtime — Node's crypto is not available.
+ */
+async function verifyJwt(token: string): Promise<boolean> {
+  try {
+    const secret = process.env.ADMIN_JWT_SECRET ?? "";
+    if (!secret || !token) return false;
+
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const [header, payload, sig] = parts;
+
+    const keyData = new TextEncoder().encode(secret);
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const data = new TextEncoder().encode(`${header}.${payload}`);
+    const sigBytes = Uint8Array.from(
+      atob(sig.replace(/-/g, "+").replace(/_/g, "/")),
+      (c) => c.charCodeAt(0)
+    );
+
+    const isValid = await crypto.subtle.verify("HMAC", cryptoKey, sigBytes, data);
+    if (!isValid) return false;
+
+    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return decoded.exp > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
 }
 
-function badConfig() {
-  return NextResponse.json(
-    { error: "Admin auth is not configured on the server." },
-    { status: 503 }
-  );
-}
-
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const token = request.cookies.get(COOKIE_NAME)?.value ?? "";
 
-  if (pathname === "/admin/login") {
-    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";
-    if (isValidSessionToken(token)) {
+  // If already logged in and visiting /admin/login → redirect to dashboard
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+    if (await verifyJwt(token)) {
       return NextResponse.redirect(new URL("/admin/bookings", request.url));
     }
     return NextResponse.next();
   }
 
-  const shouldProtectAdmin = pathname.startsWith("/admin/");
-  const shouldProtectBookingsApi =
-    pathname === "/api/bookings" &&
-    (request.method === "GET" || request.method === "DELETE");
-
-  if (!shouldProtectAdmin && !shouldProtectBookingsApi) {
+  // Protect all other /admin/* pages
+  if (pathname.startsWith("/admin/")) {
+    if (!(await verifyJwt(token))) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
     return NextResponse.next();
   }
 
-  if (!isAdminConfigValid()) {
-    return badConfig();
-  }
-
-  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";
-  const authenticated = isValidSessionToken(token);
-
-  if (authenticated) {
-    return NextResponse.next();
-  }
-
-  if (shouldProtectBookingsApi) {
-    return unauthorizedApi();
-  }
-
-  const loginUrl = new URL("/admin/login", request.url);
-  return NextResponse.redirect(loginUrl);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/bookings"],
+  matcher: ["/admin/:path*"],
 };

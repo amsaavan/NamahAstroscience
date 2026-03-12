@@ -19,6 +19,11 @@
   --star-dim: #d1d5db;
 }
 
+.admin-layout {
+  --font-display: var(--font-admin-display);
+  --font-body: var(--font-admin-body);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -33,6 +38,10 @@
 }
 
 body {
+  /* Default to user styling */
+  --font-display: var(--font-user-display);
+  --font-body: var(--font-user-body);
+
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), "Arial Narrow", sans-serif;

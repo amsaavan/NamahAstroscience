@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AdminInactivityGuard from "@/components/admin-inactivity-guard";
 
 type ReviewRecord = {
     id: string;
@@ -63,6 +64,7 @@ export default function AdminReviewsPage() {
 
     return (
         <main className="min-h-screen bg-[#f5efe6] px-6 py-12 text-[#5a1e1e]">
+            <AdminInactivityGuard />
             <div className="mx-auto max-w-6xl">
 
                 {/* Header */}

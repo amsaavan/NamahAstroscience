@@ -101,3 +101,17 @@ export async function updateFeesPaid(date: string, slot: string, feesPaid: boole
     writeQueue = next.then(() => undefined, () => undefined);
     return next;
 }
+
+export async function updateBookingCompleted(date: string, slot: string, completed: boolean) {
+    const run = async () => {
+        const store = await readStore();
+        const day = store[date] ?? {};
+        if (!day[slot]) return { ok: false as const };
+        store[date] = { ...day, [slot]: { ...day[slot], completed } };
+        await writeStore(store);
+        return { ok: true as const };
+    };
+    const next = writeQueue.then(run);
+    writeQueue = next.then(() => undefined, () => undefined);
+    return next;
+}

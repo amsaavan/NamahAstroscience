@@ -49,3 +49,12 @@ export async function updateFeesPaid(date: string, slot: string, feesPaid: boole
   const { updateFeesPaid } = await import("@/lib/booking-store-local");
   return updateFeesPaid(date, slot, feesPaid);
 }
+
+export async function updateBookingCompleted(date: string, slot: string, completed: boolean) {
+  if (isVercel) {
+    const { updateBookingCompleted } = await import("@/lib/booking-store-supabase");
+    return updateBookingCompleted(date, slot, completed);
+  }
+  const { updateBookingCompleted } = await import("@/lib/booking-store-local");
+  return updateBookingCompleted(date, slot, completed);
+}
