@@ -547,7 +547,7 @@ export default function AstrologerWebsite() {
                   <h3 className="font-display text-3xl text-[var(--tokyo-neon)] mb-4">With Horoscope Reading</h3>
                   <ul className="space-y-3">
                     {[
-                      "I can surely guide, which care one should take about health, so that disease can be detected at an early stage.",
+                      "I can provide guidance on specific health precautions aligned with individual risk patterns, enabling early identification of potential issues before they develop into serious conditions. This includes recognizing vulnerable organs, monitoring emerging symptoms, and maintaining awareness of periods when the body is more susceptible, so that timely action and preventive attention can reduce long-term impact.",
                       "I suggest business ideas, according to your horoscope. Therefore, you can avert major losses of time, money and futile efforts.",
                       "I can suggest about better career and choosing the desired stream in education.",
                       "Providing suitable suggestions related to match making and marriage life.",
