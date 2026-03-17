@@ -42,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${sixCaps.variable} ${barlowCondensed.variable} ${cormorantGaramond.variable} ${merriweather.variable} antialiased`}>
+      <body suppressHydrationWarning className={`${sixCaps.variable} ${barlowCondensed.variable} ${cormorantGaramond.variable} ${merriweather.variable} antialiased`}>
         {children}
       </body>
     </html>

@@ -1,0 +1,66 @@
+{
+  "moonLongitude": 192.40972186087845,
+  "nakshatra": "Swati",
+  "jd": 2451544.7708333335,
+  "dasha": {
+    "moonLongitude": 192.40972186087845,
+    "balanceYears": 10.246875487814107,
+    "elapsedYears": 7.753124512185893,
+    "periods": [
+      {
+        "planet": "Ra",
+        "startDate": "1992-03-31T12:00:21.918Z",
+        "endDate": "2010-03-31T20:45:57.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Ju",
+        "startDate": "2010-03-31T20:45:57.918Z",
+        "endDate": "2026-03-31T17:53:09.918Z",
+        "isCurrent": true
+      },
+      {
+        "planet": "Sa",
+        "startDate": "2026-03-31T17:53:09.918Z",
+        "endDate": "2045-03-31T08:27:57.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Me",
+        "startDate": "2045-03-31T08:27:57.918Z",
+        "endDate": "2062-03-31T11:24:21.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Ke",
+        "startDate": "2062-03-31T11:24:21.918Z",
+        "endDate": "2069-03-31T04:08:45.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Ve",
+        "startDate": "2069-03-31T04:08:45.918Z",
+        "endDate": "2089-03-31T00:32:45.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Su",
+        "startDate": "2089-03-31T00:32:45.918Z",
+        "endDate": "2095-03-31T11:27:57.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Mo",
+        "startDate": "2095-03-31T11:27:57.918Z",
+        "endDate": "2105-03-31T21:39:57.918Z",
+        "isCurrent": false
+      },
+      {
+        "planet": "Ma",
+        "startDate": "2105-03-31T21:39:57.918Z",
+        "endDate": "2112-03-31T14:24:21.918Z",
+        "isCurrent": false
+      }
+    ]
+  }
+}
