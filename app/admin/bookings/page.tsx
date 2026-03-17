@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Head from "next/head";
+import { Origin, Horoscope } from "circular-natal-horoscope-js";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminInactivityGuard from "@/components/admin-inactivity-guard";
+import { moonposition } from "astronomia";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -35,67 +38,171 @@ const PLANETS = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"] as const;
 type Planet = (typeof PLANETS)[number];
 
 const PLANET_FULL: Record<Planet, string> = {
-  Su: "Sun", Mo: "Moon", Ma: "Mars", Me: "Mercury",
-  Ju: "Jupiter", Ve: "Venus", Sa: "Saturn", Ra: "Rahu", Ke: "Ketu",
+  Su: "Sun",
+  Mo: "Moon",
+  Ma: "Mars",
+  Me: "Mercury",
+  Ju: "Jupiter",
+  Ve: "Venus",
+  Sa: "Saturn",
+  Ra: "Rahu",
+  Ke: "Ketu",
 };
 
 const RASHI_NAMES = [
-  "Aries", "Taurus", "Gemini", "Cancer",
-  "Leo", "Virgo", "Libra", "Scorpio",
-  "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+  "Aries",
+  "Taurus",
+  "Gemini",
+  "Cancer",
+  "Leo",
+  "Virgo",
+  "Libra",
+  "Scorpio",
+  "Sagittarius",
+  "Capricorn",
+  "Aquarius",
+  "Pisces",
 ];
 
 const RASHI_SHORT = [
-  "Ari", "Tau", "Gem", "Can",
-  "Leo", "Vir", "Lib", "Sco",
-  "Sag", "Cap", "Aqu", "Pis",
+  "Ari",
+  "Tau",
+  "Gem",
+  "Can",
+  "Leo",
+  "Vir",
+  "Lib",
+  "Sco",
+  "Sag",
+  "Cap",
+  "Aqu",
+  "Pis",
 ];
 
 // 27 Nakshatras (each spans 13°20' = 13.333...°)
 const NAKSHATRAS = [
-  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
-  "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-  "Mula", "Purvashadha", "Uttarashadha", "Shravana", "Dhanishta", "Shatabhisha",
-  "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
+  "Ashwini",
+  "Bharani",
+  "Krittika",
+  "Rohini",
+  "Mrigashira",
+  "Ardra",
+  "Punarvasu",
+  "Pushya",
+  "Ashlesha",
+  "Magha",
+  "Purva Phalguni",
+  "Uttara Phalguni",
+  "Hasta",
+  "Chitra",
+  "Swati",
+  "Vishakha",
+  "Anuradha",
+  "Jyeshtha",
+  "Mula",
+  "Purvashadha",
+  "Uttarashadha",
+  "Shravana",
+  "Dhanishta",
+  "Shatabhisha",
+  "Purva Bhadrapada",
+  "Uttara Bhadrapada",
+  "Revati",
 ];
 
 // Nakshatra lords for Vimshottari Dasha (same order as NAKSHATRAS)
 const NAKSHATRA_LORDS: Planet[] = [
-  "Ke", "Ve", "Su", "Mo", "Ma", "Ra",
-  "Ju", "Sa", "Me", "Ke", "Ve", "Su",
-  "Mo", "Ma", "Ra", "Ju", "Sa", "Me",
-  "Ke", "Ve", "Su", "Mo", "Ma", "Ra",
-  "Ju", "Sa", "Me",
+  "Ke",
+  "Ve",
+  "Su",
+  "Mo",
+  "Ma",
+  "Ra",
+  "Ju",
+  "Sa",
+  "Me",
+  "Ke",
+  "Ve",
+  "Su",
+  "Mo",
+  "Ma",
+  "Ra",
+  "Ju",
+  "Sa",
+  "Me",
+  "Ke",
+  "Ve",
+  "Su",
+  "Mo",
+  "Ma",
+  "Ra",
+  "Ju",
+  "Sa",
+  "Me",
 ];
 
 // Vimshottari Dasha years for each planet
 const DASHA_YEARS: Record<Planet, number> = {
-  Ke: 7, Ve: 20, Su: 6, Mo: 10, Ma: 7, Ra: 18, Ju: 16, Sa: 19, Me: 17,
+  Ke: 7,
+  Ve: 20,
+  Su: 6,
+  Mo: 10,
+  Ma: 7,
+  Ra: 18,
+  Ju: 16,
+  Sa: 19,
+  Me: 17,
 };
 
 // Planets must go in Vimshottari order
-const DASHA_ORDER: Planet[] = ["Ke", "Ve", "Su", "Mo", "Ma", "Ra", "Ju", "Sa", "Me"];
+const DASHA_ORDER: Planet[] = [
+  "Ke",
+  "Ve",
+  "Su",
+  "Mo",
+  "Ma",
+  "Ra",
+  "Ju",
+  "Sa",
+  "Me",
+];
 
 // Approximate combust orbs (degrees)
 const COMBUST_ORB: Partial<Record<Planet, number>> = {
-  Mo: 12, Ma: 17, Me: 14, Ju: 11, Ve: 10, Sa: 15,
+  Mo: 12,
+  Ma: 17,
+  Me: 14,
+  Ju: 11,
+  Ve: 10,
+  Sa: 15,
 };
 
 // ─── Astronomical Calculations (Jean Meeus + Lahiri Ayanamsa) ───────────────
 
 const J2000 = 2451545.0;
 
-function n360(d: number) { return ((d % 360) + 360) % 360; }
-function r(d: number) { return d * Math.PI / 180; }
-function deg(x: number) { return x * 180 / Math.PI; }
+function n360(d: number) {
+  return ((d % 360) + 360) % 360;
+}
+function r(d: number) {
+  return (d * Math.PI) / 180;
+}
+function deg(x: number) {
+  return (x * 180) / Math.PI;
+}
 
 function julianDay(y: number, m: number, d: number, hour = 12): number {
   const a = Math.floor((14 - m) / 12);
   const yy = y + 4800 - a;
   const mm = m + 12 * a - 3;
-  const jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy +
-    Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  const jdn =
+    d +
+    Math.floor((153 * mm + 2) / 5) +
+    365 * yy +
+    Math.floor(yy / 4) -
+    Math.floor(yy / 100) +
+    Math.floor(yy / 400) -
+    32045;
   return jdn + (hour - 12) / 24;
 }
 
@@ -103,25 +210,37 @@ function julianDay(y: number, m: number, d: number, hour = 12): number {
 function lahiriAyanamsa(jd: number): number {
   // At JD 2451545.0 (J2000.0) ayanamsa ≈ 23.8531°
   // Precession rate ≈ 50.288" / year = 0.013969° / year
-  return 23.8531 + (jd - J2000) / 365.25 * 0.013969;
+  return 23.8531 + ((jd - J2000) / 365.25) * 0.013969;
 }
 
 /** Solve Kepler's equation M = E - e·sin(E) iteratively */
 function keplerE(M_deg: number, e: number): number {
   let E = r(M_deg);
   const M = r(M_deg);
-  for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  for (let i = 0; i < 8; i++)
+    E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
   return E;
 }
 
 // Orbital elements at J2000.0 [L0, L1(°/century), w0, w1, e0, e1, a(AU)]
-const OE: Record<string, [number, number, number, number, number, number, number]> = {
-  Ea: [100.46435, 36000.76983, 102.94719, 0.30929, 0.01671022, -0.00004204, 1.000000],
-  Me: [252.25084, 149472.6741, 77.45779, 0.15595, 0.20563069, -0.000028, 0.387098],
-  Ve: [181.97973, 58517.8154, 131.56377, 0.05660, 0.00677323, -0.000047, 0.723330],
-  Ma: [355.45332, 19140.2993, 336.04084, 0.44320, 0.09341233, 0.000089, 1.523688],
-  Ju: [34.40438, 3034.9057, 14.27495, 0.18160, 0.04839266, -0.000163, 5.203363],
-  Sa: [49.94432, 1222.1138, 92.86136, 0.54220, 0.05415060, -0.000244, 9.537070],
+const OE: Record<
+  string,
+  [number, number, number, number, number, number, number]
+> = {
+  Ea: [
+    100.46435, 36000.76983, 102.94719, 0.30929, 0.01671022, -0.00004204, 1.0,
+  ],
+  Me: [
+    252.25084, 149472.6741, 77.45779, 0.15595, 0.20563069, -0.000028, 0.387098,
+  ],
+  Ve: [
+    181.97973, 58517.8154, 131.56377, 0.0566, 0.00677323, -0.000047, 0.72333,
+  ],
+  Ma: [
+    355.45332, 19140.2993, 336.04084, 0.4432, 0.09341233, 0.000089, 1.523688,
+  ],
+  Ju: [34.40438, 3034.9057, 14.27495, 0.1816, 0.04839266, -0.000163, 5.203363],
+  Sa: [49.94432, 1222.1138, 92.86136, 0.5422, 0.0541506, -0.000244, 9.53707],
 };
 
 /** Heliocentric ecliptic longitude (tropical) and radius (AU) for a planet */
@@ -132,13 +251,24 @@ function heliocentric(id: string, T: number): { lon: number; r: number } {
   const e = Math.max(0, e0 + e1 * T);
   const M = n360(L - w);
   const E = keplerE(M, e);
-  const nu = deg(2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)));
+  const nu = deg(
+    2 *
+      Math.atan2(
+        Math.sqrt(1 + e) * Math.sin(E / 2),
+        Math.sqrt(1 - e) * Math.cos(E / 2),
+      ),
+  );
   const radius = a * (1 - e * Math.cos(E));
   return { lon: n360(nu + w), r: radius };
 }
 
 /** Convert heliocentric → geocentric ecliptic longitude */
-function helioToGeo(pLon: number, pR: number, eLon: number, eR: number): number {
+function helioToGeo(
+  pLon: number,
+  pR: number,
+  eLon: number,
+  eR: number,
+): number {
   const px = pR * Math.cos(r(pLon)) - eR * Math.cos(r(eLon));
   const py = pR * Math.sin(r(pLon)) - eR * Math.sin(r(eLon));
   return n360(deg(Math.atan2(py, px)));
@@ -153,36 +283,21 @@ function computePositions(jd: number): Record<Planet, number> {
   const L0s = n360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
   const Ms = n360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
   const Ms_r = r(Ms);
-  const Cs = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Ms_r)
-    + (0.019993 - 0.000101 * T) * Math.sin(2 * Ms_r)
-    + 0.000289 * Math.sin(3 * Ms_r);
-  const sunTrop = n360(L0s + Cs);                 // Tropical (geocentric)
-  const Su = n360(sunTrop - ay);              // Sidereal (Vedic)
+  const Cs =
+    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Ms_r) +
+    (0.019993 - 0.000101 * T) * Math.sin(2 * Ms_r) +
+    0.000289 * Math.sin(3 * Ms_r);
+  const sunTrop = n360(L0s + Cs); // Tropical (geocentric)
+  const Su = n360(sunTrop - ay); // Sidereal (Vedic)
 
   // Earth heliocentric (needed to convert other planets to geocentric)
-  const earthLon = n360(sunTrop + 180);            // Earth opp. Sun (tropical)
+  const earthLon = n360(sunTrop + 180); // Earth opp. Sun (tropical)
   const earthR = heliocentric("Ea", T).r;
 
-  // ── Moon (Meeus Ch.47 simplified, accuracy ±0.3°) ───────────────────────
-  const Lm = n360(218.3165 + 481267.8813 * T);
-  const Mm = n360(134.9634 + 477198.8676 * T);
-  const D = n360(297.8502 + 445267.1115 * T);
-  const F = n360(93.2721 + 483202.0175 * T);
-  void F; // used in full theory; kept for reference
-  const dL = -1.2739 * Math.sin(r(Mm - 2 * D))
-    + 0.6583 * Math.sin(r(2 * D))
-    + 0.2136 * Math.sin(r(Mm))
-    - 0.1858 * Math.sin(r(Ms))
-    - 0.0594 * Math.sin(r(2 * Mm - 2 * D))
-    - 0.0571 * Math.sin(r(Mm - 2 * D + Ms))
-    + 0.0533 * Math.sin(r(Mm + 2 * D))
-    + 0.0458 * Math.sin(r(2 * D - Ms))
-    + 0.0409 * Math.sin(r(Mm - Ms))
-    - 0.0347 * Math.sin(r(D))
-    - 0.0306 * Math.sin(r(Mm + Ms))
-    - 0.0148 * Math.sin(r(2 * F - 2 * D))
-    + 0.0111 * Math.sin(r(Mm - 4 * D));
-  const Mo = n360(Lm + dL - ay);
+  // ── Moon (astronomia precise ELP-2000/82) ───────────────────────────────
+  const moonPos = moonposition.position(jd);
+  const MoTrop = n360(deg(moonPos.lon));
+  const Mo = n360(MoTrop - ay);
 
   // ── Planets via Kepler + heliocentric→geocentric ─────────────────────────
   function geo(id: string): number {
@@ -195,7 +310,17 @@ function computePositions(jd: number): Record<Planet, number> {
   const Ra = n360(rahuTrop - ay);
   const Ke = n360(Ra + 180);
 
-  return { Su, Mo, Ma: geo("Ma"), Me: geo("Me"), Ju: geo("Ju"), Ve: geo("Ve"), Sa: geo("Sa"), Ra, Ke };
+  return {
+    Su,
+    Mo,
+    Ma: geo("Ma"),
+    Me: geo("Me"),
+    Ju: geo("Ju"),
+    Ve: geo("Ve"),
+    Sa: geo("Sa"),
+    Ra,
+    Ke,
+  };
 }
 
 /** Detect retrograde by forward-differencing (t-0.5 vs t+0.5 days) */
@@ -212,18 +337,63 @@ function detectRetrograde(jd: number): Record<Planet, boolean> {
   return retro;
 }
 
-/** Compute the ascendant sidereal longitude */
-function computeAscendant(jd: number, latDeg: number, lonDeg: number): number {
+/** Compute the ascendant sidereal longitude and MC */
+function computeAscAndMC(jd: number, latDeg: number, lonDeg: number): { asc: number; mc: number; ay: number } {
   const T = (jd - J2000) / 36525;
-  const gmst = 280.46061837 + 360.98564736629 * (jd - J2000) + 0.000387933 * T * T;
+  const gmst =
+    280.46061837 + 360.98564736629 * (jd - J2000) + 0.000387933 * T * T;
   const lst = n360(gmst + lonDeg);
   const eps = 23.439291 - 0.013004 * T;
   const lstR = r(lst);
   const epsR = r(eps);
   const latR = r(latDeg);
-  const ascRad = Math.atan2(Math.cos(lstR), -Math.sin(lstR) * Math.cos(epsR) - Math.tan(latR) * Math.sin(epsR));
+  const ascRad = Math.atan2(
+    Math.cos(lstR),
+    -Math.sin(lstR) * Math.cos(epsR) - Math.tan(latR) * Math.sin(epsR),
+  );
   const ascTrop = n360(deg(ascRad));
-  return n360(ascTrop - lahiriAyanamsa(jd));  // Sidereal ascendant
+
+  // Midheaven (MC) perfectly in correct quadrant
+  const mcRad = Math.atan2(Math.sin(lstR), Math.cos(lstR) * Math.cos(epsR));
+  const mcTrop = n360(deg(mcRad));
+
+  // Note: we'll run Horoscope.js below to get Placidus cusps
+  const ay = lahiriAyanamsa(jd);
+  return {
+    asc: n360(ascTrop - ay),
+    mc: n360(mcTrop - ay),
+    ay: ay
+  };
+}
+
+
+// STEP 2: Core interval check (circular-safe)
+function inInterval(p: number, start: number, end: number) {
+  p = n360(p);
+  start = n360(start);
+  end = n360(end);
+
+  // Case A: normal interval (no wrap)
+  if (start < end) {
+    return p >= start && p < end;
+  }
+
+  // Case B: wrap-around interval (e.g., 350° → 20°)
+  return p >= start || p < end;
+}
+
+// Map a planet directly into exact house cusps boundaries
+function getChalitHouse(planetLongitude: number, cusps: number[]) {
+  const p = n360(planetLongitude);
+  for (let i = 0; i < 12; i++) {
+    const start = cusps[i];
+    const end = cusps[(i + 1) % 12];
+
+    if (inInterval(p, start, end)) {
+      return i + 1; // house number (1–12)
+    }
+  }
+  return 1;
 }
 
 type PlanetData = {
@@ -231,6 +401,7 @@ type PlanetData = {
   longitude: number;
   signIdx: number;
   degInSign: number;
+  navamsaSignIdx: number; // Added for D9
   nakshatraIdx: number;
   pada: number;
   nakshatraName: string;
@@ -238,17 +409,52 @@ type PlanetData = {
   combust: boolean;
   exalted: boolean;
   debilitated: boolean;
-  house: number;
+  house: number;       // standard Lagna house
+  chalitHouse: number; // Equal House from Ascendant exact degree
 };
+
+// Navamsa calculation function
+const NAVAMSA_SIZE = 3.3333333333;
+function getNavamsaSign(longitude: number): number {
+  const signIndex = Math.floor(longitude / 30);
+  const degreeInSign = longitude % 30;
+  const navamsaIndex = Math.floor(degreeInSign / NAVAMSA_SIZE);
+  
+  const movable = [0, 3, 6, 9];
+  const fixed = [1, 4, 7, 10];
+  
+  let start;
+  if (movable.includes(signIndex)) start = signIndex;
+  else if (fixed.includes(signIndex)) start = (signIndex + 8) % 12;
+  else start = (signIndex + 4) % 12;
+  
+  return (start + navamsaIndex) % 12;
+}
 
 // Signs 0-11 where planets are exalted
 const EXALTED_SIGN: Record<Planet, number> = {
-  Su: 0, Mo: 1, Ma: 9, Me: 5, Ju: 3, Ve: 11, Sa: 6, Ra: 1, Ke: 7,
+  Su: 0,
+  Mo: 1,
+  Ma: 9,
+  Me: 5,
+  Ju: 3,
+  Ve: 11,
+  Sa: 6,
+  Ra: 1,
+  Ke: 7,
 };
 
 // Signs 0-11 where planets are debilitated
 const DEBILITATED_SIGN: Record<Planet, number> = {
-  Su: 6, Mo: 7, Ma: 3, Me: 11, Ju: 9, Ve: 5, Sa: 0, Ra: 7, Ke: 1,
+  Su: 6,
+  Mo: 7,
+  Ma: 3,
+  Me: 11,
+  Ju: 9,
+  Ve: 5,
+  Sa: 0,
+  Ra: 7,
+  Ke: 1,
 };
 
 function computeChart(
@@ -256,27 +462,62 @@ function computeChart(
   birthTime: string,
   latDeg: number,
   lonDeg: number,
-): { ascendant: number; ascLongitude: number; planets: PlanetData[]; houses: Record<number, PlanetData[]> } {
-  const [y, m, d] = birthDate.split("-").map(Number);
-  const [h = 12, min = 0] = (birthTime || "12:00").split(":").map(Number);
-  const localHour = h + min / 60;
+  forTransit: boolean = false,
+): {
+  ascendant: number;
+  ascLongitude: number;
+  jd: number;
+  planets: PlanetData[];
+  houses: Record<number, PlanetData[]>;
+  cusps: number[];
+} {
+  let y, m, d, localHour;
+
+  if (forTransit) {
+    const now = new Date();
+    y = now.getUTCFullYear();
+    m = now.getUTCMonth() + 1;
+    d = now.getUTCDate();
+    localHour = now.getUTCHours() + now.getUTCMinutes() / 60;
+  } else {
+    const partsDate = birthDate.split("-").map(Number);
+    y = partsDate[0]; m = partsDate[1]; d = partsDate[2];
+    const partsTime = (birthTime || "12:00").split(":").map(Number);
+    localHour = partsTime[0] + (partsTime[1] || 0) / 60;
+  }
 
   // Calculate Standard Timezone Offset (Local Time inputs are Standard Time, not Mean Time)
   let tzOffset = Math.round(lonDeg / 15);
   // Default to IST (+5.5) for India/South Asia
-  if (lonDeg >= 68 && lonDeg <= 97 && latDeg >= 5 && latDeg <= 37) {
+  if (!forTransit && lonDeg >= 68 && lonDeg <= 97 && latDeg >= 5 && latDeg <= 37) {
     tzOffset = 5.5;
-  } else if (Math.abs(lonDeg / 15 - Math.round(lonDeg / 15 * 2) / 2) < 0.25) {
+  } else if (!forTransit && Math.abs(lonDeg / 15 - Math.round((lonDeg / 15) * 2) / 2) < 0.25) {
     // Snap to nearest half-hour timezone if appropriate (e.g. Iran, Afghanistan)
-    tzOffset = Math.round(lonDeg / 15 * 2) / 2;
+    tzOffset = Math.round((lonDeg / 15) * 2) / 2;
   }
 
-  const utHour = localHour - tzOffset;
+  const utHour = forTransit ? localHour : localHour - tzOffset;
   const jd = julianDay(y, m, d, utHour);
 
-  const ascLon = computeAscendant(jd, latDeg, lonDeg);
+  const { asc: ascLon, mc: mcLon, ay } = computeAscAndMC(jd, latDeg, lonDeg);
   const ascSignIdx = Math.floor(ascLon / 30);
-  const positions = computePositions(jd);
+  
+  // Generate exact Placidus cusps using circular-natal-horoscope-js
+  const origin = new Origin({
+    year: y,
+    month: m - 1,
+    date: d,
+    hour: utHour,
+    minute: (utHour - Math.floor(utHour)) * 60,
+    latitude: latDeg,
+    longitude: lonDeg
+  });
+  const horoscope = new Horoscope({ origin, houseSystem: "placidus", zodiac: "sidereal" });
+  
+  // horoscope.Houses[0] is House 1
+  const cusps = horoscope.Houses.map((h: any) => h.ChartPosition.StartPosition.Ecliptic.DecimalDegrees);
+  
+    const positions = computePositions(jd);
   const retrogrades = detectRetrograde(jd);
   const sunLon = positions["Su"];
 
@@ -285,7 +526,10 @@ function computeChart(
     const signIdx = Math.floor(longitude / 30);
     const degInSign = longitude % 30;
     const nakshatraIdx = Math.floor(longitude / (360 / 27)) % 27;
-    const pada = Math.min(Math.floor((longitude % (360 / 27)) / (360 / 108)) + 1, 4);
+    const pada = Math.min(
+      Math.floor((longitude % (360 / 27)) / (360 / 108)) + 1,
+      4,
+    );
     const house = ((signIdx - ascSignIdx + 12) % 12) + 1;
     const isNode = planet === "Ra" || planet === "Ke";
 
@@ -300,9 +544,24 @@ function computeChart(
     const exalted = signIdx === EXALTED_SIGN[planet];
     const debilitated = signIdx === DEBILITATED_SIGN[planet];
 
+    // Chalit House assignment using actual sidereal house cusps
+    const chalitHouse = getChalitHouse(longitude, cusps);
+
     return {
-      planet, longitude, signIdx, degInSign, nakshatraIdx, pada,
-      nakshatraName: NAKSHATRAS[nakshatraIdx], retrograde: retrogrades[planet], combust, exalted, debilitated, house
+      planet,
+      longitude,
+      signIdx,
+      degInSign,
+      navamsaSignIdx: getNavamsaSign(longitude),
+      nakshatraIdx,
+      pada,
+      nakshatraName: NAKSHATRAS[nakshatraIdx],
+      retrograde: retrogrades[planet],
+      combust,
+      exalted,
+      debilitated,
+      house,
+      chalitHouse,
     };
   });
 
@@ -310,7 +569,24 @@ function computeChart(
   for (let i = 1; i <= 12; i++) houses[i] = [];
   for (const pd of planets) houses[pd.house].push(pd);
 
-  return { ascendant: ascSignIdx, ascLongitude: ascLon, planets, houses };
+  return { ascendant: ascSignIdx, ascLongitude: ascLon, jd, planets, houses, cusps };
+}
+
+// ─── Transit (Gochar) ────────────────────────────────────────────────────────
+// Transit chart mapped relatively to the user's natal lagna
+function getTransit(natalAscendantSign: number) {
+  const transitChart = computeChart("2000-01-01", "12:00", 0, 0, true);
+  
+  const transitHouses: Record<number, PlanetData[]> = {};
+  for (let i = 1; i <= 12; i++) transitHouses[i] = [];
+  
+  for (const p of transitChart.planets) {
+    const houseFromNatal = ((p.signIdx - natalAscendantSign + 12) % 12) + 1;
+    const transitP = { ...p, house: houseFromNatal };
+    transitHouses[houseFromNatal].push(transitP);
+  }
+  
+  return transitHouses;
 }
 
 // ─── Vimshottari Dasha ───────────────────────────────────────────────────────
@@ -322,7 +598,7 @@ type DashaPeriod = {
   isCurrent: boolean;
 };
 
-function computeDasha(moonLongitude: number, birthDate: string): DashaPeriod[] {
+function computeDasha(moonLongitude: number, birthJd: number): DashaPeriod[] {
   const nakshatraIdx = Math.floor(moonLongitude / (360 / 27)) % 27;
   const lordPlanet = NAKSHATRA_LORDS[nakshatraIdx];
 
@@ -332,8 +608,9 @@ function computeDasha(moonLongitude: number, birthDate: string): DashaPeriod[] {
   const balanceFraction = 1 - posInNakshatra;
   const balanceYears = DASHA_YEARS[lordPlanet] * balanceFraction;
 
-  const [y, m, d] = birthDate.split("-").map(Number);
-  const birthDt = new Date(Date.UTC(y, m - 1, d));
+  // Convert Julian Day back to exact Unix timestamp (JD 2440587.5 is 1970-01-01T00:00:00Z)
+  const unixMs = (birthJd - 2440587.5) * 86400000;
+  const birthDt = new Date(unixMs);
   const now = new Date();
 
   // Find starting index in DASHA_ORDER
@@ -345,7 +622,8 @@ function computeDasha(moonLongitude: number, birthDate: string): DashaPeriod[] {
     const idx = (startIdx + i) % 9;
     const planet = DASHA_ORDER[idx];
     const years = i === 0 ? balanceYears : DASHA_YEARS[planet];
-    const ms = years * 365.25 * 24 * 3600 * 1000;
+    // Use civil year (365.2425 days) to avoid arbitrary calendar drift
+    const ms = years * 365.2425 * 24 * 3600 * 1000;
     const end = new Date(cursor.getTime() + ms);
     periods.push({
       planet,
@@ -372,9 +650,11 @@ function computeDasha(moonLongitude: number, birthDate: string): DashaPeriod[] {
 function KundaliChartSVG({
   houses,
   ascendant,
+  cusps,
 }: {
   houses: Record<number, PlanetData[]>;
   ascendant: number; // 0-11
+  cusps?: number[]; // Placidus exact cusps (12 array)
 }) {
   const SIZE = 368;
   const ORANGE = "#f97316";
@@ -386,91 +666,201 @@ function KundaliChartSVG({
 
   // Planet text directly centered in the geometrically widest part of each house region
   const CX: Record<number, number> = {
-    1: 0.50, 2: 0.25, 3: 0.12, 4: 0.25,
-    5: 0.12, 6: 0.25, 7: 0.50, 8: 0.75,
-    9: 0.88, 10: 0.75, 11: 0.88, 12: 0.75,
+    1: 0.5,
+    2: 0.25,
+    3: 0.12,
+    4: 0.25,
+    5: 0.12,
+    6: 0.25,
+    7: 0.5,
+    8: 0.75,
+    9: 0.88,
+    10: 0.75,
+    11: 0.88,
+    12: 0.75,
   };
   const CY: Record<number, number> = {
-    1: 0.25, 2: 0.12, 3: 0.25, 4: 0.50,
-    5: 0.75, 6: 0.88, 7: 0.75, 8: 0.88,
-    9: 0.75, 10: 0.50, 11: 0.25, 12: 0.12,
+    1: 0.25,
+    2: 0.12,
+    3: 0.25,
+    4: 0.5,
+    5: 0.75,
+    6: 0.88,
+    7: 0.75,
+    8: 0.88,
+    9: 0.75,
+    10: 0.5,
+    11: 0.25,
+    12: 0.12,
   };
 
   // Rashi number placements specifically positioned firmly near the inner corners
   const RX: Record<number, number> = {
-    1: 0.50, 2: 0.25, 3: 0.19, 4: 0.44,
-    5: 0.19, 6: 0.25, 7: 0.50, 8: 0.75,
-    9: 0.81, 10: 0.56, 11: 0.81, 12: 0.75,
+    1: 0.5,
+    2: 0.25,
+    3: 0.19,
+    4: 0.44,
+    5: 0.19,
+    6: 0.25,
+    7: 0.5,
+    8: 0.75,
+    9: 0.81,
+    10: 0.56,
+    11: 0.81,
+    12: 0.75,
   };
   const RY: Record<number, number> = {
-    1: 0.44, 2: 0.19, 3: 0.26, 4: 0.51,
-    5: 0.76, 6: 0.82, 7: 0.58, 8: 0.82,
-    9: 0.76, 10: 0.51, 11: 0.26, 12: 0.19,
+    1: 0.44,
+    2: 0.19,
+    3: 0.26,
+    4: 0.51,
+    5: 0.76,
+    6: 0.82,
+    7: 0.58,
+    8: 0.82,
+    9: 0.76,
+    10: 0.51,
+    11: 0.26,
+    12: 0.19,
   };
 
   // Semantic colours based on user image
   const PCOL: Record<Planet, string> = {
-    Su: "#ef4444", Mo: "#818cf8", Ma: "#166534", Me: "#475569",
-    Ju: "#c084fc", Ve: "#166534", Sa: "#b91c1c", Ra: "#b91c1c", Ke: "#b45309",
+    Su: "#ef4444",
+    Mo: "#818cf8",
+    Ma: "#166534",
+    Me: "#475569",
+    Ju: "#c084fc",
+    Ve: "#166534",
+    Sa: "#b91c1c",
+    Ra: "#b91c1c",
+    Ke: "#b45309",
   };
 
   // Rashi number colours based on image style
   const RCOL: Record<number, string> = {
-    1: "#ef4444", 2: "#818cf8", 3: "#166534", 4: "#3b82f6",
-    5: "#c084fc", 6: "#166534", 7: "#b91c1c", 8: "#b91c1c",
-    9: "#f59e0b", 10: "#ef4444", 11: "#0f172a", 12: "#0f172a",
+    1: "#ef4444",
+    2: "#818cf8",
+    3: "#166534",
+    4: "#3b82f6",
+    5: "#c084fc",
+    6: "#166534",
+    7: "#b91c1c",
+    8: "#b91c1c",
+    9: "#f59e0b",
+    10: "#ef4444",
+    11: "#0f172a",
+    12: "#0f172a",
   };
 
   const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
   return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ maxWidth: "100%", height: "auto", background: "#ffffff", borderRadius: "4px" }} xmlns="http://www.w3.org/2000/svg">
-
+    <svg
+      width={SIZE}
+      height={SIZE}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      style={{
+        maxWidth: "100%",
+        height: "auto",
+        background: "#ffffff",
+        borderRadius: "4px",
+      }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
       {/* Authentic NI Chart Geometry */}
       {/* Outer Square border */}
-      <rect x={0} y={0} width={SIZE} height={SIZE} fill="none" stroke={ORANGE} strokeWidth={1.5} />
+      <rect
+        x={0}
+        y={0}
+        width={SIZE}
+        height={SIZE}
+        fill="none"
+        stroke={ORANGE}
+        strokeWidth={1.5}
+      />
 
       {/* Corner-to-corner diagonals */}
-      <line x1={0} y1={0} x2={SIZE} y2={SIZE} stroke={ORANGE} strokeWidth={1.5} />
-      <line x1={0} y1={SIZE} x2={SIZE} y2={0} stroke={ORANGE} strokeWidth={1.5} />
+      <line
+        x1={0}
+        y1={0}
+        x2={SIZE}
+        y2={SIZE}
+        stroke={ORANGE}
+        strokeWidth={1.5}
+      />
+      <line
+        x1={0}
+        y1={SIZE}
+        x2={SIZE}
+        y2={0}
+        stroke={ORANGE}
+        strokeWidth={1.5}
+      />
 
       {/* Center diamond (connecting midpoints) */}
-      <polygon points={`${SIZE / 2},0 0,${SIZE / 2} ${SIZE / 2},${SIZE} ${SIZE},${SIZE / 2}`} fill="none" stroke={ORANGE} strokeWidth={1.5} />
+      <polygon
+        points={`${SIZE / 2},0 0,${SIZE / 2} ${SIZE / 2},${SIZE} ${SIZE},${SIZE / 2}`}
+        fill="none"
+        stroke={ORANGE}
+        strokeWidth={1.5}
+      />
 
       {/* Houses: rashi number + planets */}
-      {ALL.map(house => {
+      {ALL.map((house) => {
         const cx = CX[house] * SIZE;
         const cy = CY[house] * SIZE;
         const rx = RX[house] * SIZE;
         const ry = RY[house] * SIZE;
         const plts = houses[house] ?? [];
-        const rn = rashiNum(house);
+        const rn = ((ascendant + house - 1) % 12) + 1; // This is the rashi *in* the house
         const pStart = cy - (plts.length - 1) * 7;
 
         return (
           <g key={house}>
             {/* Rashi number */}
-            <text x={rx} y={ry} textAnchor="middle"
-              fill={RCOL[rn] || "#1e293b"} fontSize={13}
-              fontWeight="700" fontFamily="Arial,sans-serif"
-            >{rn}</text>
+            <text
+              x={rx}
+              y={ry}
+              textAnchor="middle"
+              fill={RCOL[rn] || "#1e293b"}
+              fontSize={13}
+              fontWeight="700"
+              fontFamily="Arial,sans-serif"
+            >
+              {rn}
+            </text>
 
             {/* Planets */}
-            {plts.map((p, i) => (
-              <text key={p.planet} x={cx} y={pStart + i * 16}
-                textAnchor="middle" fill={PCOL[p.planet]}
-                fontSize={13} fontWeight="700" fontFamily="Arial,sans-serif"
-              >
-                {p.planet}
-                <tspan dy="-6" fontSize="9" fontWeight="600">{Math.floor(p.degInSign)}</tspan>
-                <tspan dy="6">
-                  {p.retrograde && " *"}
-                  {p.exalted && " ↑"}
-                  {p.debilitated && " ↓"}
-                  {p.combust && " ^"}
-                </tspan>
-              </text>
-            ))}
+            {plts.map((p, i) => {
+              const pSign = (p.signIdx ?? 0) + 1;
+              const isChalitShift = pSign !== rn;
+              const displayText = isChalitShift ? `${pSign} ${p.planet}` : p.planet;
+
+              return (
+                <text
+                  key={p.planet}
+                  x={cx}
+                  y={pStart + i * 16}
+                  textAnchor="middle"
+                  fill={isChalitShift ? "#ef4444" : PCOL[p.planet]}
+                  fontSize={13}
+                  fontWeight="700"
+                  fontFamily="Arial,sans-serif"
+                >
+                  {displayText}
+                  <tspan dy="-6" fontSize="9" fontWeight="600">
+                    {Math.floor(p.degInSign)}
+                  </tspan>
+                  <tspan dy="6">
+                    {p.retrograde && " *"}
+                    {p.exalted && " ↑"}
+                    {p.debilitated && " ↓"}
+                    {p.combust && " ^"}
+                  </tspan>
+                </text>
+              );
+            })}
           </g>
         );
       })}
@@ -480,10 +870,17 @@ function KundaliChartSVG({
 
 // ─── Kundali Modal ───────────────────────────────────────────────────────────
 
-function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: () => void }) {
+function KundaliModal({
+  booking,
+  onClose,
+}: {
+  booking: BookingRecord;
+  onClose: () => void;
+}) {
   const [geo, setGeo] = useState<GeoResult>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState("");
+  const [activeChartTab, setActiveChartTab] = useState<"D1" | "D9" | "Chalit" | "Gochar">("D1");
 
   useEffect(() => {
     if (!booking.birthPlace) return;
@@ -491,32 +888,57 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
     setGeoLoading(true);
     setGeoError("");
     fetch(`/api/geocode?place=${encodeURIComponent(booking.birthPlace)}`)
-      .then(r => r.json())
-      .then((data: { lat?: number; lon?: number; displayName?: string; error?: string }) => {
-        if (cancelled) return;
-        if (data.error || data.lat == null) setGeoError(data.error ?? "Could not resolve coordinates.");
-        else setGeo({ lat: data.lat!, lon: data.lon!, displayName: data.displayName! });
+      .then((r) => r.json())
+      .then(
+        (data: {
+          lat?: number;
+          lon?: number;
+          displayName?: string;
+          error?: string;
+        }) => {
+          if (cancelled) return;
+          if (data.error || data.lat == null)
+            setGeoError(data.error ?? "Could not resolve coordinates.");
+          else
+            setGeo({
+              lat: data.lat!,
+              lon: data.lon!,
+              displayName: data.displayName!,
+            });
+        },
+      )
+      .catch(() => {
+        if (!cancelled) setGeoError("Geocoding request failed.");
       })
-      .catch(() => { if (!cancelled) setGeoError("Geocoding request failed."); })
-      .finally(() => { if (!cancelled) setGeoLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setGeoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [booking.birthPlace]);
 
   const latDeg = geo?.lat ?? 23.0;
   const lonDeg = geo?.lon ?? 72.0;
 
   const chart = useMemo(
-    () => computeChart(booking.birthDate!, booking.birthTime || "12:00", latDeg, lonDeg),
-    [booking.birthDate, booking.birthTime, latDeg, lonDeg]
+    () =>
+      computeChart(
+        booking.birthDate!,
+        booking.birthTime || "12:00",
+        latDeg,
+        lonDeg,
+      ),
+    [booking.birthDate, booking.birthTime, latDeg, lonDeg],
   );
 
-  const moonData = chart.planets.find(p => p.planet === "Mo")!;
+  const moonData = chart.planets.find((p) => p.planet === "Mo")!;
   const dasha = useMemo(
-    () => computeDasha(moonData.longitude, booking.birthDate!),
-    [moonData.longitude, booking.birthDate]
+    () => computeDasha(moonData.longitude, chart.jd),
+    [moonData.longitude, chart.jd],
   );
 
-  const currentDasha = dasha.find(d => d.isCurrent);
+  const currentDasha = dasha.find((d) => d.isCurrent);
 
   function degStr(deg: number) {
     const d = Math.floor(deg);
@@ -527,49 +949,138 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
   }
 
   function fmtDate(dt: Date) {
-    return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    return dt.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   }
+
+  const transitHouses = useMemo(
+    () => getTransit(chart.ascendant),
+    [chart.ascendant],
+  );
 
   const ascRashi = RASHI_NAMES[chart.ascendant];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-6 pb-16"
-      style={{ background: "rgba(6,11,26,0.94)", backdropFilter: "blur(6px)" }}>
-      <div className="relative mx-auto w-full max-w-4xl rounded-2xl border border-[#1e2a45] shadow-2xl" style={{ background: "#0d1526" }}>
+  // Helper function to build Navamsa houses mapping for the SVG
+  const navamsaHouses = useMemo(() => {
+    const nh: Record<number, PlanetData[]> = {};
+    for (let i = 1; i <= 12; i++) nh[i] = [];
+    
+    // In D9, the "Ascendant" sign is the Navamsa sign of the D1 Ascendant degree
+    const ascNavamsaSign = getNavamsaSign(chart.ascLongitude);
 
+    chart.planets.forEach(p => {
+      const houseFromNavLagna = ((p.navamsaSignIdx - ascNavamsaSign + 12) % 12) + 1;
+      nh[houseFromNavLagna].push(p);
+    });
+    return { houses: nh, ascendant: ascNavamsaSign };
+  }, [chart]);
+
+  // Helper function to build Chalit houses mapping for the SVG
+  const chalitChartHouses = useMemo(() => {
+    const ch: Record<number, PlanetData[]> = {};
+    for (let i = 1; i <= 12; i++) ch[i] = [];
+    
+    // Chalit still uses the D1 Ascendant Rashi as House 1's label
+    chart.planets.forEach(p => {
+      ch[p.chalitHouse].push(p);
+    });
+    return { houses: ch, ascendant: chart.ascendant, cusps: chart.cusps };
+  }, [chart]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-6 pb-16"
+      style={{ background: "rgba(6,11,26,0.94)", backdropFilter: "blur(6px)" }}
+    >
+      <div
+        className="relative mx-auto w-full max-w-4xl rounded-2xl border border-[#1e2a45] shadow-2xl"
+        style={{ background: "#0d1526" }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between rounded-t-2xl px-8 py-5"
-          style={{ background: "linear-gradient(135deg,#7a0000,#4a0000)" }}>
+        <div
+          className="flex items-center justify-between rounded-t-2xl px-8 py-5"
+          style={{ background: "linear-gradient(135deg,#7a0000,#4a0000)" }}
+        >
           <div>
-            <p className="text-xs uppercase tracking-[3px] text-[#f4c430] mb-1">॥ Shree Ganeshay Namah ॥</p>
-            <h2 className="text-xl font-bold text-[#f4c430]">Kundali — {booking.fullName}</h2>
-            <p className="text-xs text-[#e2c97e] mt-0.5">Namah Astroscience · Vedic Birth Chart</p>
+            <p className="text-xs uppercase tracking-[3px] text-[#f4c430] mb-1">
+              ॥ Shree Ganeshay Namah ॥
+            </p>
+            <h2 className="text-xl font-bold text-[#f4c430]">
+              Kundali — {booking.fullName}
+            </h2>
+            <p className="text-xs text-[#e2c97e] mt-0.5">
+              Namah Astroscience · Vedic Birth Chart
+            </p>
           </div>
-          <button type="button" onClick={onClose}
-            className="rounded-lg border border-[#f4c430]/40 px-3 py-1.5 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-[#f4c430]/40 px-3 py-1.5 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition"
+          >
             ✕ Close
           </button>
         </div>
 
         {/* Birth Details Row */}
         <div className="grid grid-cols-3 gap-4 px-8 py-4 border-b border-[#1e2a45]">
-          <div><p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">Date of Birth</p><p className="text-sm font-semibold text-[#e2e8f0]">{booking.birthDate}</p></div>
-          <div><p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">Time of Birth</p><p className="text-sm font-semibold text-[#e2e8f0]">{booking.birthTime || "—"}</p></div>
-          <div><p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">Place of Birth</p><p className="text-sm font-semibold text-[#e2e8f0]">{booking.birthPlace || "—"}</p></div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+              Date of Birth
+            </p>
+            <p className="text-sm font-semibold text-[#e2e8f0]">
+              {booking.birthDate}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+              Time of Birth
+            </p>
+            <p className="text-sm font-semibold text-[#e2e8f0]">
+              {booking.birthTime || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+              Place of Birth
+            </p>
+            <p className="text-sm font-semibold text-[#e2e8f0]">
+              {booking.birthPlace || "—"}
+            </p>
+          </div>
         </div>
 
         {/* Geo status */}
         {booking.birthPlace && (
           <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-2 text-xs">
             {geoLoading ? (
-              <><span className="h-2 w-2 rounded-full bg-[#f4c430] animate-pulse inline-block" /><span className="text-[#6b7280]">Resolving coordinates…</span></>
+              <>
+                <span className="h-2 w-2 rounded-full bg-[#f4c430] animate-pulse inline-block" />
+                <span className="text-[#6b7280]">Resolving coordinates…</span>
+              </>
             ) : geo ? (
-              <><span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                <span className="text-green-400 font-medium">📍 {geo.lat.toFixed(4)}°N, {geo.lon.toFixed(4)}°E</span>
-                <span className="text-[#4b5563] truncate max-w-xs" title={geo.displayName}>— {geo.displayName}</span>
+              <>
+                <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                <span className="text-green-400 font-medium">
+                  📍 {geo.lat.toFixed(4)}°N, {geo.lon.toFixed(4)}°E
+                </span>
+                <span
+                  className="text-[#4b5563] truncate max-w-xs"
+                  title={geo.displayName}
+                >
+                  — {geo.displayName}
+                </span>
               </>
             ) : (
-              <><span className="h-2 w-2 rounded-full bg-amber-500 inline-block" /><span className="text-amber-400">⚠ Using default coords (23°N, 72°E){geoError ? `: ${geoError}` : ""}</span></>
+              <>
+                <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
+                <span className="text-amber-400">
+                  ⚠ Using default coords (23°N, 72°E)
+                  {geoError ? `: ${geoError}` : ""}
+                </span>
+              </>
             )}
           </div>
         )}
@@ -577,63 +1088,199 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
         {/* Ascendant + current dasha banner */}
         <div className="px-8 py-2.5 border-b border-[#1e2a45] flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <span className="uppercase tracking-[2px] text-[#6b7280]">Ascendant (Lagna):</span>
+            <span className="uppercase tracking-[2px] text-[#6b7280]">
+              Ascendant (Lagna):
+            </span>
             <span className="font-bold text-[#f4c430] text-sm">{ascRashi}</span>
           </div>
           {currentDasha && (
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-[#6b7280]">Current Mahadasha:</span>
-              <span className="font-bold text-[#a78bfa]">{PLANET_FULL[currentDasha.planet]}</span>
-              <span className="text-[#4b5563]">until {fmtDate(currentDasha.endDate)}</span>
+              <span className="font-bold text-[#a78bfa]">
+                {PLANET_FULL[currentDasha.planet]}
+              </span>
+              <span className="text-[#4b5563]">
+                until {fmtDate(currentDasha.endDate)}
+              </span>
             </div>
           )}
         </div>
 
         {/* Main: Chart + Planet Table */}
-        <div className="flex flex-col lg:flex-row gap-6 px-8 py-6">
+        <div className="flex flex-col gap-8 px-8 py-6">
+          {/* Chart Header Tabs & Display */}
+          <div className="flex flex-col gap-6">
+            <div className="flex gap-6 border-b border-[#1e2a45]">
+              <button
+                type="button"
+                onClick={() => setActiveChartTab("D1")}
+                className={`pb-2 text-sm uppercase tracking-[2px] font-bold transition-colors ${activeChartTab === "D1" ? "border-b-2 border-[#f4c430] text-[#f4c430]" : "text-[#6b7280] hover:text-[#e2e8f0]"}`}
+              >
+                Lagna (D1)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveChartTab("D9")}
+                className={`pb-2 text-sm uppercase tracking-[2px] font-bold transition-colors ${activeChartTab === "D9" ? "border-b-2 border-[#a78bfa] text-[#a78bfa]" : "text-[#6b7280] hover:text-[#e2e8f0]"}`}
+              >
+                Navamsa (D9)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveChartTab("Chalit")}
+                className={`pb-2 text-sm uppercase tracking-[2px] font-bold transition-colors ${activeChartTab === "Chalit" ? "border-b-2 border-[#fb923c] text-[#fb923c]" : "text-[#6b7280] hover:text-[#e2e8f0]"}`}
+              >
+                Chalit (Bhava)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveChartTab("Gochar")}
+                className={`pb-2 text-sm uppercase tracking-[2px] font-bold transition-colors ${activeChartTab === "Gochar" ? "border-b-2 border-green-400 text-green-400" : "text-[#6b7280] hover:text-[#e2e8f0]"}`}
+              >
+                Transit (Gochar)
+              </button>
+            </div>
 
-          {/* Lagna Chart */}
-          <div className="flex-shrink-0">
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">Lagna Chart (D1)</p>
-            <KundaliChartSVG houses={chart.houses} ascendant={chart.ascendant} />
+            <div className="flex justify-center w-full">
+              {activeChartTab === "D1" && (
+                <div className="w-full max-w-sm">
+                  <KundaliChartSVG
+                    houses={chart.houses}
+                    ascendant={chart.ascendant}
+                  />
+                </div>
+              )}
+              {activeChartTab === "D9" && (
+                <div className="w-full max-w-sm" style={{ filter: "sepia(0.2)"}}>
+                  <KundaliChartSVG
+                    houses={navamsaHouses.houses}
+                    ascendant={navamsaHouses.ascendant}
+                  />
+                </div>
+              )}
+              {activeChartTab === "Chalit" && (
+                <div className="w-full max-w-sm" style={{ filter: "brightness(1.1) contrast(1.1)"}}>
+                  <KundaliChartSVG
+                    houses={chalitChartHouses.houses}
+                    ascendant={chalitChartHouses.ascendant}
+                    cusps={chalitChartHouses.cusps}
+                  />
+                </div>
+              )}
+              {activeChartTab === "Gochar" && (
+                <div className="w-full max-w-sm" style={{ filter: "hue-rotate(90deg)"}}>
+                  <KundaliChartSVG
+                    houses={transitHouses}
+                    ascendant={chart.ascendant} // Relative to natal lagna
+                  />
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Planetary Positions Table */}
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">Planetary Positions</p>
-            <div className="rounded-xl border border-[#1e2a45] overflow-x-auto">
-              <table className="w-full text-xs whitespace-nowrap">
-                <thead>
-                  <tr style={{ background: "#0f1829" }}>
-                    {["Planet", "C", "R", "Rashi", "Longitude", "Nakshatra", "Pada", "House"].map(h => (
-                      <th key={h} className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Ascendant row */}
-                  <tr className="border-t border-[#1e2a45]" style={{ background: "rgba(217,119,6,0.06)" }}>
+            
+            {/* Planetary Positions Table */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">
+                Planetary Positions
+              </p>
+              <div className="rounded-xl border border-[#1e2a45] overflow-x-auto">
+                <table className="w-full text-xs whitespace-nowrap">
+                  <thead>
+                    <tr style={{ background: "#0f1829" }}>
+                      {[
+                        "Planet",
+                        "C",
+                        "R",
+                        "D1 Sign",
+                        "D9 Sign",
+                        "Longitude",
+                        "Nakshatra",
+                        "Pada",
+                        "D1 House",
+                        "Eq House",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Ascendant row */}
+                  <tr
+                    className="border-t border-[#1e2a45]"
+                    style={{ background: "rgba(217,119,6,0.06)" }}
+                  >
                     <td className="px-3 py-2 font-bold text-[#f4c430]">Asc</td>
                     <td className="px-3 py-2 text-[#4b5563]">—</td>
                     <td className="px-3 py-2 text-[#4b5563]">—</td>
-                    <td className="px-3 py-2 text-[#e2e8f0]">{RASHI_SHORT[chart.ascendant]}</td>
-                    <td className="px-3 py-2 text-[#9ca3af] font-mono">{degStr(chart.ascLongitude % 30)}</td>
-                    <td className="px-3 py-2 text-[#e2e8f0]">{NAKSHATRAS[Math.floor(chart.ascLongitude / (360 / 27)) % 27]}</td>
-                    <td className="px-3 py-2 text-[#9ca3af]">{Math.floor((chart.ascLongitude % (360 / 27)) / (360 / 108)) + 1}</td>
+                    <td className="px-3 py-2 text-[#e2e8f0]">
+                      {RASHI_SHORT[chart.ascendant]}
+                    </td>
+                    <td className="px-3 py-2 text-[#a78bfa]">
+                      {RASHI_SHORT[navamsaHouses.ascendant]}
+                    </td>
+                    <td className="px-3 py-2 text-[#9ca3af] font-mono">
+                      {degStr(chart.ascLongitude % 30)}
+                    </td>
+                    <td className="px-3 py-2 text-[#e2e8f0]">
+                      {
+                        NAKSHATRAS[
+                          Math.floor(chart.ascLongitude / (360 / 27)) % 27
+                        ]
+                      }
+                    </td>
+                    <td className="px-3 py-2 text-[#9ca3af]">
+                      {Math.floor(
+                        (chart.ascLongitude % (360 / 27)) / (360 / 108),
+                      ) + 1}
+                    </td>
                     <td className="px-3 py-2 text-[#f4c430]">1</td>
+                    <td className="px-3 py-2 text-[#34d399]">1</td>
                   </tr>
-                  {chart.planets.map(pd => (
-                    <tr key={pd.planet} className="border-t border-[#1e2a45]" style={{ background: "#111a2e" }}>
-                      <td className="px-3 py-2 font-bold" style={{ color: pd.planet === "Ra" || pd.planet === "Ke" ? "#c084fc" : pd.planet === "Su" ? "#f59e0b" : "#e2e8f0" }}>
+                  {chart.planets.map((pd) => (
+                    <tr
+                      key={pd.planet}
+                      className="border-t border-[#1e2a45]"
+                      style={{ background: "#111a2e" }}
+                    >
+                      <td
+                        className="px-3 py-2 font-bold"
+                        style={{
+                          color:
+                            pd.planet === "Ra" || pd.planet === "Ke"
+                              ? "#c084fc"
+                              : pd.planet === "Su"
+                                ? "#f59e0b"
+                                : "#e2e8f0",
+                        }}
+                      >
                         {pd.planet}
                       </td>
-                      <td className="px-3 py-2 text-red-400 font-bold">{pd.combust ? "C" : ""}</td>
-                      <td className="px-3 py-2 text-blue-400 font-bold">{pd.retrograde ? "R" : ""}</td>
-                      <td className="px-3 py-2 text-[#e2e8f0]">{RASHI_SHORT[pd.signIdx]}</td>
-                      <td className="px-3 py-2 text-[#9ca3af] font-mono">{degStr(pd.degInSign)}</td>
-                      <td className="px-3 py-2 text-[#e2e8f0]">{pd.nakshatraName}</td>
+                      <td className="px-3 py-2 text-red-400 font-bold">
+                        {pd.combust ? "C" : ""}
+                      </td>
+                      <td className="px-3 py-2 text-blue-400 font-bold">
+                        {pd.retrograde ? "R" : ""}
+                      </td>
+                      <td className="px-3 py-2 text-[#e2e8f0]">
+                        {RASHI_SHORT[pd.signIdx]}
+                      </td>
+                      <td className="px-3 py-2 text-[#a78bfa]">
+                        {RASHI_SHORT[pd.navamsaSignIdx]}
+                      </td>
+                      <td className="px-3 py-2 text-[#9ca3af] font-mono">
+                        {degStr(pd.degInSign)}
+                      </td>
+                      <td className="px-3 py-2 text-[#e2e8f0]">
+                        {pd.nakshatraName}
+                      </td>
                       <td className="px-3 py-2 text-[#9ca3af]">{pd.pada}</td>
                       <td className="px-3 py-2 text-[#f4c430]">{pd.house}</td>
+                      <td className="px-3 py-2 text-[#34d399]">{pd.chalitHouse}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -642,9 +1289,16 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
 
             {/* Legend */}
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#4b5563]">
-              <span><span className="font-bold text-red-400">C</span> = Combust</span>
-              <span><span className="font-bold text-blue-400">R</span> = Retrograde</span>
-              <span>Su=Sun Mo=Moon Ma=Mars Me=Mercury Ju=Jupiter Ve=Venus Sa=Saturn Ra=Rahu Ke=Ketu</span>
+              <span>
+                <span className="font-bold text-red-400">C</span> = Combust
+              </span>
+              <span>
+                <span className="font-bold text-blue-400">R</span> = Retrograde
+              </span>
+              <span>
+                Su=Sun Mo=Moon Ma=Mars Me=Mercury Ju=Jupiter Ve=Venus Sa=Saturn
+                Ra=Rahu Ke=Ketu
+              </span>
             </div>
           </div>
         </div>
@@ -654,28 +1308,56 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
           <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">
             Vimshottari Dasha
             <span className="ml-2 normal-case tracking-normal text-[#4b5563]">
-              — Balance at birth: {PLANET_FULL[NAKSHATRA_LORDS[moonData.nakshatraIdx]]} {(DASHA_YEARS[NAKSHATRA_LORDS[moonData.nakshatraIdx]] * (1 - (moonData.longitude % (360 / 27)) / (360 / 27))).toFixed(2)} yrs
+              — Balance at birth:{" "}
+              {PLANET_FULL[NAKSHATRA_LORDS[moonData.nakshatraIdx]]}{" "}
+              {(
+                DASHA_YEARS[NAKSHATRA_LORDS[moonData.nakshatraIdx]] *
+                (1 - (moonData.longitude % (360 / 27)) / (360 / 27))
+              ).toFixed(2)}{" "}
+              yrs
             </span>
           </p>
           <div className="rounded-xl border border-[#1e2a45] overflow-x-auto">
             <table className="w-full text-xs whitespace-nowrap">
               <thead>
                 <tr style={{ background: "#0f1829" }}>
-                  {["Mahadasha", "Period", "Start", "End"].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider">{h}</th>
+                  {["Mahadasha", "Period", "Start", "End"].map((h) => (
+                    <th
+                      key={h}
+                      className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider"
+                    >
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {dasha.map((d, i) => (
-                  <tr key={i} className="border-t border-[#1e2a45]"
-                    style={{ background: d.isCurrent ? "rgba(167,139,250,0.12)" : "#111a2e" }}>
-                    <td className="px-3 py-2 font-bold" style={{ color: d.isCurrent ? "#a78bfa" : "#e2e8f0" }}>
-                      {d.isCurrent && "▶ "}{PLANET_FULL[d.planet]}
+                  <tr
+                    key={i}
+                    className="border-t border-[#1e2a45]"
+                    style={{
+                      background: d.isCurrent
+                        ? "rgba(167,139,250,0.12)"
+                        : "#111a2e",
+                    }}
+                  >
+                    <td
+                      className="px-3 py-2 font-bold"
+                      style={{ color: d.isCurrent ? "#a78bfa" : "#e2e8f0" }}
+                    >
+                      {d.isCurrent && "▶ "}
+                      {PLANET_FULL[d.planet]}
                     </td>
-                    <td className="px-3 py-2 text-[#9ca3af]">{DASHA_YEARS[d.planet]} yrs</td>
-                    <td className="px-3 py-2 text-[#9ca3af]">{fmtDate(d.startDate)}</td>
-                    <td className="px-3 py-2 text-[#9ca3af]">{fmtDate(d.endDate)}</td>
+                    <td className="px-3 py-2 text-[#9ca3af]">
+                      {DASHA_YEARS[d.planet]} yrs
+                    </td>
+                    <td className="px-3 py-2 text-[#9ca3af]">
+                      {fmtDate(d.startDate)}
+                    </td>
+                    <td className="px-3 py-2 text-[#9ca3af]">
+                      {fmtDate(d.endDate)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -685,13 +1367,18 @@ function KundaliModal({ booking, onClose }: { booking: BookingRecord; onClose: (
 
         {/* Footer */}
         <div className="px-8 pb-5 flex items-center justify-between gap-4 border-t border-[#1e2a45] pt-4">
-          <p className="text-[10px] text-[#4b5563] max-w-sm">* Positions use mean planetary motion (Vedic approximation). For precise Kundali consult Jinesh Shah directly.</p>
-          <button type="button" onClick={() => window.print()}
-            className="rounded-lg border border-[#f4c430] px-4 py-2 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition">
+          <p className="text-[10px] text-[#4b5563] max-w-sm">
+            * Positions use mean planetary motion (Vedic approximation). For
+            precise Kundali consult Jinesh Shah directly.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-lg border border-[#f4c430] px-4 py-2 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition"
+          >
             🖨 Print / Save PDF
           </button>
         </div>
-
       </div>
     </div>
   );
@@ -708,7 +1395,9 @@ export default function AdminBookingsPage() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [cancellingKey, setCancellingKey] = useState("");
   const [togglingKey, setTogglingKey] = useState("");
-  const [kundaliBooking, setKundaliBooking] = useState<BookingRecord | null>(null);
+  const [kundaliBooking, setKundaliBooking] = useState<BookingRecord | null>(
+    null,
+  );
 
   const endpoint = useMemo(() => {
     if (!selectedDate) return "/api/bookings";
@@ -719,7 +1408,8 @@ export default function AdminBookingsPage() {
     let active = true;
     const controller = new AbortController();
     const load = async () => {
-      setLoading(true); setError("");
+      setLoading(true);
+      setError("");
       try {
         const r = await fetch(endpoint, { signal: controller.signal });
         if (!r.ok) throw new Error("failed");
@@ -727,95 +1417,240 @@ export default function AdminBookingsPage() {
         if (active) setBookings(data.bookings ?? []);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        if (active) { setBookings([]); setError("Could not load bookings."); }
-      } finally { if (active) setLoading(false); }
+        if (active) {
+          setBookings([]);
+          setError("Could not load bookings.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     load();
-    return () => { active = false; controller.abort(); };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [endpoint]);
 
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
 
-  const activeBookings = bookings.filter(b => !b.completed);
-  const completedBookings = bookings.filter(b => b.completed);
+  const activeBookings = bookings.filter((b) => !b.completed);
+  const completedBookings = bookings.filter((b) => b.completed);
 
-    const renderTable = (list: BookingRecord[], isCompletedSection: boolean) => (
-      <div className="mt-6 overflow-x-auto rounded-xl border border-[#d6c7b2] bg-white">
-        <table className="min-w-full text-left text-sm text-[#2b1b12]">
-          <thead className="bg-[#efe4d6] text-[#3b2417]">
+  const renderTable = (list: BookingRecord[], isCompletedSection: boolean) => (
+    <div className="mt-6 overflow-x-auto rounded-xl border border-[#d6c7b2] bg-white">
+      <table className="min-w-full text-left text-sm text-[#2b1b12]">
+        <thead className="bg-[#efe4d6] text-[#3b2417]">
+          <tr>
+            {[
+              "Date",
+              "Time",
+              "Name",
+              "Email",
+              "WhatsApp",
+              "Notes",
+              "Created",
+              "Fees",
+              "Kundali",
+              "Actions",
+            ].map((h) => (
+              <th key={h} className="px-4 py-3 align-bottom">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {list.length === 0 ? (
             <tr>
-              {["Date", "Time", "Name", "Email", "WhatsApp", "Notes", "Created", "Fees", "Kundali", "Actions"].map(h => (
-                <th key={h} className="px-4 py-3 align-bottom">{h}</th>
-              ))}
+              <td className="px-4 py-6 text-[#6b4c3b] text-center" colSpan={10}>
+                {isCompletedSection
+                  ? "No completed consultations."
+                  : "No active bookings found."}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {list.length === 0 ? (
-              <tr><td className="px-4 py-6 text-[#6b4c3b] text-center" colSpan={10}>{isCompletedSection ? "No completed consultations." : "No active bookings found."}</td></tr>
-            ) : list.map(booking => {
+          ) : (
+            list.map((booking) => {
               const rowKey = `${booking.date}|${booking.slot}`;
               const hasBirth = Boolean(booking.birthDate);
               return (
-                <tr key={`${booking.date}-${booking.slot}-${booking.createdAt}`} className="border-t border-[#efe4d6] group hover:bg-[#faf6f0]">
+                <tr
+                  key={`${booking.date}-${booking.slot}-${booking.createdAt}`}
+                  className="border-t border-[#efe4d6] group hover:bg-[#faf6f0]"
+                >
                   <td className="px-4 py-3 align-middle">{booking.date}</td>
                   <td className="px-4 py-3 align-middle">{booking.slot}</td>
-                  <td className="px-4 py-3 align-middle font-medium">{booking.fullName}</td>
+                  <td className="px-4 py-3 align-middle font-medium">
+                    {booking.fullName}
+                  </td>
                   <td className="px-4 py-3 align-middle">{booking.email}</td>
                   <td className="px-4 py-3 align-middle">
-                    <a href={`https://wa.me/${booking.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-green-700 underline hover:text-green-900">{booking.whatsapp}</a>
+                    <a
+                      href={`https://wa.me/${booking.whatsapp.replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 underline hover:text-green-900"
+                    >
+                      {booking.whatsapp}
+                    </a>
                   </td>
-                  <td className="px-4 py-3 align-middle max-w-[200px] truncate" title={booking.notes}>{booking.notes || "-"}</td>
-                  <td className="px-4 py-3 align-middle">{new Date(booking.createdAt).toLocaleString()}</td>
+                  <td
+                    className="px-4 py-3 align-middle max-w-[200px] truncate"
+                    title={booking.notes}
+                  >
+                    {booking.notes || "-"}
+                  </td>
                   <td className="px-4 py-3 align-middle">
-                    <button type="button" disabled={togglingKey === rowKey}
+                    {new Date(booking.createdAt).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 align-middle">
+                    <button
+                      type="button"
+                      disabled={togglingKey === rowKey}
                       onClick={async () => {
-                        setTogglingKey(rowKey); setError("");
+                        setTogglingKey(rowKey);
+                        setError("");
                         try {
-                          const r = await fetch("/api/bookings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: booking.date, slot: booking.slot, feesPaid: !booking.feesPaid }) });
-                          if (!r.ok) { setError(((await r.json()) as BookingsResponse).error ?? "Update failed."); return; }
-                          setBookings(prev => prev.map(item => item.date === booking.date && item.slot === booking.slot ? { ...item, feesPaid: !booking.feesPaid } : item));
-                        } catch { setError("Update failed."); } finally { setTogglingKey(""); }
+                          const r = await fetch("/api/bookings", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              date: booking.date,
+                              slot: booking.slot,
+                              feesPaid: !booking.feesPaid,
+                            }),
+                          });
+                          if (!r.ok) {
+                            setError(
+                              ((await r.json()) as BookingsResponse).error ??
+                                "Update failed.",
+                            );
+                            return;
+                          }
+                          setBookings((prev) =>
+                            prev.map((item) =>
+                              item.date === booking.date &&
+                              item.slot === booking.slot
+                                ? { ...item, feesPaid: !booking.feesPaid }
+                                : item,
+                            ),
+                          );
+                        } catch {
+                          setError("Update failed.");
+                        } finally {
+                          setTogglingKey("");
+                        }
                       }}
-                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 disabled:opacity-70 ${booking.feesPaid ? "bg-green-600 text-white hover:bg-green-800" : "bg-amber-100 text-amber-800 ring-1 ring-amber-400 hover:bg-amber-200"}`}>
-                      {togglingKey === rowKey ? "..." : booking.feesPaid ? "✓ Paid" : "Unpaid"}
+                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 disabled:opacity-70 ${booking.feesPaid ? "bg-green-600 text-white hover:bg-green-800" : "bg-amber-100 text-amber-800 ring-1 ring-amber-400 hover:bg-amber-200"}`}
+                    >
+                      {togglingKey === rowKey
+                        ? "..."
+                        : booking.feesPaid
+                          ? "✓ Paid"
+                          : "Unpaid"}
                     </button>
                   </td>
                   <td className="px-4 py-3 align-middle">
-                    <button type="button" disabled={!hasBirth}
-                      title={hasBirth ? "View Kundali chart" : "No birth details provided"}
+                    <button
+                      type="button"
+                      disabled={!hasBirth}
+                      title={
+                        hasBirth
+                          ? "View Kundali chart"
+                          : "No birth details provided"
+                      }
                       onClick={() => hasBirth && setKundaliBooking(booking)}
-                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 ${hasBirth ? "bg-purple-700 text-white hover:bg-purple-900" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>
+                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 ${hasBirth ? "bg-purple-700 text-white hover:bg-purple-900" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+                    >
                       🔮 {hasBirth ? "View" : "N/A"}
                     </button>
                   </td>
                   <td className="px-4 py-3 align-middle">
                     <div className="flex items-center gap-2">
-                      <button type="button" disabled={cancellingKey === rowKey + "-done"}
+                      <button
+                        type="button"
+                        disabled={cancellingKey === rowKey + "-done"}
                         onClick={async () => {
-                           const actionLabel = isCompletedSection ? "Restore" : "Mark Done";
-                           setError(""); setCancellingKey(rowKey + "-done");
-                           try {
-                             const r = await fetch("/api/bookings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: booking.date, slot: booking.slot, completed: !booking.completed }) });
-                             const d = (await r.json()) as BookingsResponse;
-                             if (!r.ok) { setError(d.error ?? `${actionLabel} failed.`); return; }
-                             setBookings(prev => prev.map(item => item.date === booking.date && item.slot === booking.slot ? { ...item, completed: !booking.completed } : item));
-                           } catch { setError(`${actionLabel} failed.`); } finally { setCancellingKey(""); }
+                          const actionLabel = isCompletedSection
+                            ? "Restore"
+                            : "Mark Done";
+                          setError("");
+                          setCancellingKey(rowKey + "-done");
+                          try {
+                            const r = await fetch("/api/bookings", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                date: booking.date,
+                                slot: booking.slot,
+                                completed: !booking.completed,
+                              }),
+                            });
+                            const d = (await r.json()) as BookingsResponse;
+                            if (!r.ok) {
+                              setError(d.error ?? `${actionLabel} failed.`);
+                              return;
+                            }
+                            setBookings((prev) =>
+                              prev.map((item) =>
+                                item.date === booking.date &&
+                                item.slot === booking.slot
+                                  ? { ...item, completed: !booking.completed }
+                                  : item,
+                              ),
+                            );
+                          } catch {
+                            setError(`${actionLabel} failed.`);
+                          } finally {
+                            setCancellingKey("");
+                          }
                         }}
-                        className={`flex min-w-[85px] items-center justify-center rounded-md px-3 py-1.5 text-xs transition hover:-translate-y-0.5 disabled:opacity-70 whitespace-nowrap ${isCompletedSection ? "bg-gray-200 text-gray-800 ring-1 ring-gray-400 hover:bg-gray-300" : "bg-blue-100 font-medium text-blue-800 ring-1 ring-blue-400 hover:bg-blue-200"}`}>
-                        {cancellingKey === rowKey + "-done" ? "..." : isCompletedSection ? "Restore" : "Mark Done"}
+                        className={`flex min-w-[85px] items-center justify-center rounded-md px-3 py-1.5 text-xs transition hover:-translate-y-0.5 disabled:opacity-70 whitespace-nowrap ${isCompletedSection ? "bg-gray-200 text-gray-800 ring-1 ring-gray-400 hover:bg-gray-300" : "bg-blue-100 font-medium text-blue-800 ring-1 ring-blue-400 hover:bg-blue-200"}`}
+                      >
+                        {cancellingKey === rowKey + "-done"
+                          ? "..."
+                          : isCompletedSection
+                            ? "Restore"
+                            : "Mark Done"}
                       </button>
                       {!isCompletedSection && (
-                        <button type="button" disabled={cancellingKey === rowKey}
+                        <button
+                          type="button"
+                          disabled={cancellingKey === rowKey}
                           onClick={async () => {
-                            setError(""); setCancellingKey(rowKey);
+                            setError("");
+                            setCancellingKey(rowKey);
                             try {
-                              const r = await fetch("/api/bookings", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: booking.date, slot: booking.slot }) });
+                              const r = await fetch("/api/bookings", {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  date: booking.date,
+                                  slot: booking.slot,
+                                }),
+                              });
                               const d = (await r.json()) as BookingsResponse;
-                              if (!r.ok) { setError(d.error ?? "Cancel failed."); return; }
-                              setBookings(prev => prev.filter(item => !(item.date === booking.date && item.slot === booking.slot)));
-                            } catch { setError("Cancel failed."); } finally { setCancellingKey(""); }
+                              if (!r.ok) {
+                                setError(d.error ?? "Cancel failed.");
+                                return;
+                              }
+                              setBookings((prev) =>
+                                prev.filter(
+                                  (item) =>
+                                    !(
+                                      item.date === booking.date &&
+                                      item.slot === booking.slot
+                                    ),
+                                ),
+                              );
+                            } catch {
+                              setError("Cancel failed.");
+                            } finally {
+                              setCancellingKey("");
+                            }
                           }}
-                          className="flex min-w-[70px] items-center justify-center rounded-md bg-[#7a1c1c] px-3 py-1.5 text-xs text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70 whitespace-nowrap">
+                          className="flex min-w-[70px] items-center justify-center rounded-md bg-[#7a1c1c] px-3 py-1.5 text-xs text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70 whitespace-nowrap"
+                        >
                           {cancellingKey === rowKey ? "..." : "Cancel"}
                         </button>
                       )}
@@ -823,29 +1658,61 @@ export default function AdminBookingsPage() {
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-[#f5efe6] px-6 py-12 text-[#5a1e1e]">
       <AdminInactivityGuard />
-      {kundaliBooking && <KundaliModal booking={kundaliBooking} onClose={() => setKundaliBooking(null)} />}
+      {kundaliBooking && (
+        <KundaliModal
+          booking={kundaliBooking}
+          onClose={() => setKundaliBooking(null)}
+        />
+      )}
 
       <div className="mx-auto max-w-6xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-[#7a1c1c]">Admin Bookings Dashboard</h1>
-            <p className="mt-2 text-sm text-[#6b4c3b]">View all booked slots, customer details, and Kundali charts.</p>
+            <h1 className="text-3xl font-semibold text-[#7a1c1c]">
+              Admin Bookings Dashboard
+            </h1>
+            <p className="mt-2 text-sm text-[#6b4c3b]">
+              View all booked slots, customer details, and Kundali charts.
+            </p>
           </div>
           <div className="flex gap-3">
-            <Link href="/" className="rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]">🏠 Home</Link>
-            <button type="button" onClick={() => router.push("/admin/reviews")} className="rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]">Reviews</button>
-            <button type="button" disabled={loggingOut}
-              onClick={async () => { setLoggingOut(true); try { await fetch("/api/admin/logout", { method: "POST" }); } finally { router.push("/admin/login"); router.refresh(); } }}
-              className="rounded-lg bg-[#7a1c1c] px-4 py-2 text-sm text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70">
+            <Link
+              href="/"
+              className="rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]"
+            >
+              🏠 Home
+            </Link>
+            <button
+              type="button"
+              onClick={() => router.push("/admin/reviews")}
+              className="rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]"
+            >
+              Reviews
+            </button>
+            <button
+              type="button"
+              disabled={loggingOut}
+              onClick={async () => {
+                setLoggingOut(true);
+                try {
+                  await fetch("/api/admin/logout", { method: "POST" });
+                } finally {
+                  router.push("/admin/login");
+                  router.refresh();
+                }
+              }}
+              className="rounded-lg bg-[#7a1c1c] px-4 py-2 text-sm text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70"
+            >
               {loggingOut ? "Signing out..." : "Sign Out"}
             </button>
           </div>
@@ -853,11 +1720,28 @@ export default function AdminBookingsPage() {
 
         <div className="mt-6 flex flex-wrap items-end gap-4 rounded-xl border border-[#d6c7b2] bg-white p-4">
           <div>
-            <label className="mb-2 block text-sm text-[#6b4c3b]">Filter by date</label>
-            <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="rounded-lg border border-[#d6c7b2] bg-[#f9f4ec] px-3 py-2" />
+            <label className="mb-2 block text-sm text-[#6b4c3b]">
+              Filter by date
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="rounded-lg border border-[#d6c7b2] bg-[#f9f4ec] px-3 py-2"
+            />
           </div>
-          <button type="button" onClick={() => setSelectedDate("")} className="rounded-lg bg-[#7a1c1c] px-4 py-2 text-sm text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414]">Clear Filter</button>
-          <span className="text-sm font-medium text-[#6b4c3b]">{loading ? "Loading..." : `${activeBookings.length} upcoming appointment(s)`}</span>
+          <button
+            type="button"
+            onClick={() => setSelectedDate("")}
+            className="rounded-lg bg-[#7a1c1c] px-4 py-2 text-sm text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414]"
+          >
+            Clear Filter
+          </button>
+          <span className="text-sm font-medium text-[#6b4c3b]">
+            {loading
+              ? "Loading..."
+              : `${activeBookings.length} upcoming appointment(s)`}
+          </span>
         </div>
 
         {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
@@ -869,14 +1753,18 @@ export default function AdminBookingsPage() {
             className={`flex items-center gap-2 px-4 py-3 text-lg font-semibold transition-colors duration-200 border-b-[3px] ${activeTab === "active" ? "border-[#7a1c1c] text-[#7a1c1c]" : "border-transparent text-[#9a7b6b] hover:text-[#7a1c1c]"}`}
           >
             Upcoming / Active Consultations
-            <span className="rounded-full bg-[#f9f4ec] px-2 py-0.5 text-xs text-[#7a1c1c] border border-[#e8dac7]">{activeBookings.length}</span>
+            <span className="rounded-full bg-[#f9f4ec] px-2 py-0.5 text-xs text-[#7a1c1c] border border-[#e8dac7]">
+              {activeBookings.length}
+            </span>
           </button>
           <button
             onClick={() => setActiveTab("completed")}
             className={`flex items-center gap-2 px-4 py-3 text-lg font-semibold transition-colors duration-200 border-b-[3px] ${activeTab === "completed" ? "border-[#6b4c3b] text-[#6b4c3b]" : "border-transparent text-[#9a7b6b] hover:text-[#6b4c3b]"}`}
           >
             Completed Consultations
-            <span className="rounded-full bg-[#f9f4ec] px-2 py-0.5 text-xs text-[#6b4c3b] border border-[#e8dac7]">{completedBookings.length}</span>
+            <span className="rounded-full bg-[#f9f4ec] px-2 py-0.5 text-xs text-[#6b4c3b] border border-[#e8dac7]">
+              {completedBookings.length}
+            </span>
           </button>
         </div>
 

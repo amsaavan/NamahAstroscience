@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@node-jhora/core": "^2.1.0",
     "@supabase/supabase-js": "^2.98.0",
+    "astronomia": "^4.2.0",
+    "circular-natal-horoscope-js": "^1.1.0",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
