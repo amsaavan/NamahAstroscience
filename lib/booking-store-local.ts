@@ -115,3 +115,17 @@ export async function updateBookingCompleted(date: string, slot: string, complet
     writeQueue = next.then(() => undefined, () => undefined);
     return next;
 }
+
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string) {
+    const run = async () => {
+        const store = await readStore();
+        const day = store[date] ?? {};
+        if (!day[slot]) return { ok: false as const };
+        store[date] = { ...day, [slot]: { ...day[slot], birthDate, birthTime, birthPlace } };
+        await writeStore(store);
+        return { ok: true as const };
+    };
+    const next = writeQueue.then(run);
+    writeQueue = next.then(() => undefined, () => undefined);
+    return next;
+}

@@ -3,7 +3,7 @@ import { julian, moonposition } from 'astronomia';
 
 // Constants
 const NAKSHATRA_SIZE = 13.3333333333; // degrees
-const YEAR_DAYS = 365.2425;
+const YEAR_DAYS = 365.25; // Vedic solar year (Julian year)
 
 export type PlanetInfo = {
   planet: string;
@@ -76,10 +76,19 @@ function getRemainingFraction(moonSidereal: number) {
   };
 }
 
-// Add years to date
+// Add years to date using calendar arithmetic for accuracy
+// Whole years added via setFullYear (respects leap years),
+// fractional remainder converted using 365.25 days/year (Vedic solar year)
 function addYears(date: Date, years: number): Date {
-  const days = years * YEAR_DAYS;
-  return new Date(date.getTime() + days * 86400000);
+  const result = new Date(date);
+  const wholeYears = Math.floor(years);
+  const fractionalYears = years - wholeYears;
+
+  result.setFullYear(result.getFullYear() + wholeYears);
+  const fractionalDays = fractionalYears * YEAR_DAYS;
+  result.setTime(result.getTime() + fractionalDays * 86400000);
+
+  return result;
 }
 
 export type DashaPeriod = {

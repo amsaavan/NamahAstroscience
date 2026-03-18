@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import { Origin, Horoscope } from "circular-natal-horoscope-js";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AdminInactivityGuard from "@/components/admin-inactivity-guard";
@@ -502,20 +501,13 @@ function computeChart(
   const { asc: ascLon, mc: mcLon, ay } = computeAscAndMC(jd, latDeg, lonDeg);
   const ascSignIdx = Math.floor(ascLon / 30);
   
-  // Generate exact Placidus cusps using circular-natal-horoscope-js
-  const origin = new Origin({
-    year: y,
-    month: m - 1,
-    date: d,
-    hour: utHour,
-    minute: (utHour - Math.floor(utHour)) * 60,
-    latitude: latDeg,
-    longitude: lonDeg
-  });
-  const horoscope = new Horoscope({ origin, houseSystem: "placidus", zodiac: "sidereal" });
-  
-  // horoscope.Houses[0] is House 1
-  const cusps = horoscope.Houses.map((h: any) => h.ChartPosition.StartPosition.Ecliptic.DecimalDegrees);
+  // Equal House cusps (Sripathi Paddhati / Vedic Bhava Chalit)
+  // H1 midpoint = ascendant degree, so H1 cusp starts at Asc - 15°
+  // Each house spans exactly 30°
+  const cusps: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    cusps.push(n360(ascLon - 15 + i * 30));
+  }
   
     const positions = computePositions(jd);
   const retrogrades = detectRetrograde(jd);
@@ -598,6 +590,27 @@ type DashaPeriod = {
   isCurrent: boolean;
 };
 
+/**
+ * Add fractional years to a Date using calendar arithmetic.
+ * Whole years are added via setFullYear for exact calendar alignment;
+ * the fractional remainder is converted to days using 365.25 days/year
+ * (traditional Vedic solar year used in Vimshottari Dasha).
+ */
+function addYearsCalendar(date: Date, years: number): Date {
+  const result = new Date(date);
+  const wholeYears = Math.floor(years);
+  const fractionalYears = years - wholeYears;
+
+  // Add whole years via calendar (respects leap years exactly)
+  result.setFullYear(result.getFullYear() + wholeYears);
+
+  // Add fractional remainder as days (365.25 days = 1 Vedic solar year)
+  const fractionalDays = fractionalYears * 365.25;
+  result.setTime(result.getTime() + fractionalDays * 86400000);
+
+  return result;
+}
+
 function computeDasha(moonLongitude: number, birthJd: number): DashaPeriod[] {
   const nakshatraIdx = Math.floor(moonLongitude / (360 / 27)) % 27;
   const lordPlanet = NAKSHATRA_LORDS[nakshatraIdx];
@@ -622,9 +635,8 @@ function computeDasha(moonLongitude: number, birthJd: number): DashaPeriod[] {
     const idx = (startIdx + i) % 9;
     const planet = DASHA_ORDER[idx];
     const years = i === 0 ? balanceYears : DASHA_YEARS[planet];
-    // Use civil year (365.2425 days) to avoid arbitrary calendar drift
-    const ms = years * 365.2425 * 24 * 3600 * 1000;
-    const end = new Date(cursor.getTime() + ms);
+    // Calendar-based addition with 365.25 days/year (traditional Vedic solar year)
+    const end = addYearsCalendar(cursor, years);
     periods.push({
       planet,
       startDate: new Date(cursor),
@@ -882,12 +894,26 @@ function KundaliModal({
   const [geoError, setGeoError] = useState("");
   const [activeChartTab, setActiveChartTab] = useState<"D1" | "D9" | "Chalit" | "Gochar">("D1");
 
+  // Editable birth details (local state)
+  const [editDate, setEditDate] = useState(booking.birthDate || "");
+  const [editTime, setEditTime] = useState(booking.birthTime || "");
+  const [editPlace, setEditPlace] = useState(booking.birthPlace || "");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+
+  // Track if anything changed
+  const hasChanges =
+    editDate !== (booking.birthDate || "") ||
+    editTime !== (booking.birthTime || "") ||
+    editPlace !== (booking.birthPlace || "");
+
+  // Geocode whenever editPlace changes
   useEffect(() => {
-    if (!booking.birthPlace) return;
+    if (!editPlace) { setGeo(null); return; }
     let cancelled = false;
     setGeoLoading(true);
     setGeoError("");
-    fetch(`/api/geocode?place=${encodeURIComponent(booking.birthPlace)}`)
+    fetch(`/api/geocode?place=${encodeURIComponent(editPlace)}`)
       .then((r) => r.json())
       .then(
         (data: {
@@ -916,7 +942,7 @@ function KundaliModal({
     return () => {
       cancelled = true;
     };
-  }, [booking.birthPlace]);
+  }, [editPlace]);
 
   const latDeg = geo?.lat ?? 23.0;
   const lonDeg = geo?.lon ?? 72.0;
@@ -924,12 +950,12 @@ function KundaliModal({
   const chart = useMemo(
     () =>
       computeChart(
-        booking.birthDate!,
-        booking.birthTime || "12:00",
+        editDate || "2000-01-01",
+        editTime || "12:00",
         latDeg,
         lonDeg,
       ),
-    [booking.birthDate, booking.birthTime, latDeg, lonDeg],
+    [editDate, editTime, latDeg, lonDeg],
   );
 
   const moonData = chart.planets.find((p) => p.planet === "Mo")!;
@@ -1024,36 +1050,94 @@ function KundaliModal({
           </button>
         </div>
 
-        {/* Birth Details Row */}
+        {/* Birth Details Row — Editable */}
         <div className="grid grid-cols-3 gap-4 px-8 py-4 border-b border-[#1e2a45]">
-          <div>
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
               Date of Birth
             </p>
-            <p className="text-sm font-semibold text-[#e2e8f0]">
-              {booking.birthDate}
-            </p>
+            <input
+              type="date"
+              value={editDate}
+              onChange={(e) => { setEditDate(e.target.value); setSaveMsg(""); }}
+              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50"
+            />
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
               Time of Birth
             </p>
-            <p className="text-sm font-semibold text-[#e2e8f0]">
-              {booking.birthTime || "—"}
-            </p>
+            <input
+              type="time"
+              value={editTime}
+              onChange={(e) => { setEditTime(e.target.value); setSaveMsg(""); }}
+              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50"
+            />
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-1">
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
               Place of Birth
             </p>
-            <p className="text-sm font-semibold text-[#e2e8f0]">
-              {booking.birthPlace || "—"}
-            </p>
+            <input
+              type="text"
+              placeholder="City, State, Country"
+              value={editPlace}
+              onChange={(e) => { setEditPlace(e.target.value); setSaveMsg(""); }}
+              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
+            />
           </div>
         </div>
+        {/* Save bar */}
+        {(hasChanges || saveMsg) && (
+          <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-3">
+            {hasChanges && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  setSaveMsg("");
+                  try {
+                    const r = await fetch("/api/bookings", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        date: booking.date,
+                        slot: booking.slot,
+                        birthDate: editDate,
+                        birthTime: editTime,
+                        birthPlace: editPlace,
+                      }),
+                    });
+                    if (!r.ok) {
+                      setSaveMsg("Failed to save.");
+                    } else {
+                      booking.birthDate = editDate;
+                      booking.birthTime = editTime;
+                      booking.birthPlace = editPlace;
+                      setSaveMsg("✓ Saved");
+                    }
+                  } catch {
+                    setSaveMsg("Failed to save.");
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="rounded-md bg-[#f4c430] px-4 py-1.5 text-xs font-bold text-[#0d1526] hover:bg-[#e2b420] transition disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "💾 Save Birth Details"}
+              </button>
+            )}
+            {saveMsg && (
+              <span className={`text-xs font-medium ${saveMsg.startsWith("✓") ? "text-green-400" : "text-red-400"}`}>
+                {saveMsg}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Geo status */}
-        {booking.birthPlace && (
+        {editPlace && (
           <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-2 text-xs">
             {geoLoading ? (
               <>

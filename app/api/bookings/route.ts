@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BookingRecord, isValidDate, isValidSlot } from "@/lib/booking";
-import { cancelBooking, createBooking, listBookings, updateFeesPaid, updateBookingCompleted } from "@/lib/booking-store";
+import { cancelBooking, createBooking, listBookings, updateFeesPaid, updateBookingCompleted, updateBirthDetails } from "@/lib/booking-store";
 import {
   sendAdminBookingNotification,
   sendBookingConfirmation,
@@ -176,7 +176,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const body = (await request.json()) as { date?: string; slot?: string; feesPaid?: boolean; completed?: boolean };
+  const body = (await request.json()) as { date?: string; slot?: string; feesPaid?: boolean; completed?: boolean; birthDate?: string; birthTime?: string; birthPlace?: string };
   const date = (body.date ?? "").trim();
   const slot = (body.slot ?? "").trim();
 
@@ -209,6 +209,23 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "completed must be a boolean." }, { status: 400 });
     }
     const result = await updateBookingCompleted(date, slot, body.completed);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: "Booking not found for selected date and slot." },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  if (body.birthDate !== undefined || body.birthTime !== undefined || body.birthPlace !== undefined) {
+    const result = await updateBirthDetails(
+      date,
+      slot,
+      (body.birthDate ?? "").trim(),
+      (body.birthTime ?? "").trim(),
+      (body.birthPlace ?? "").trim(),
+    );
     if (!result.ok) {
       return NextResponse.json(
         { error: "Booking not found for selected date and slot." },

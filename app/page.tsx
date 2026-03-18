@@ -534,7 +534,7 @@ export default function AstrologerWebsite() {
               <CardContent className="p-8 md:p-12 space-y-6">
                 <div>
                   <h3 className="font-display text-3xl text-[var(--tokyo-neon)] mb-3">Preface</h3>
-                  <p className="font-body text-base leading-relaxed text-[var(--tokyo-muted)]">
+                  <p className="font-body text-base leading-relaxed text-white">
                     I have been endowed with astrological knowledge by the grace of Almighty God. Astrology is{" "}
                     <span className="text-red-400 font-semibold">not a miracle</span> but merely providing{" "}
                     <span className="text-[var(--tokyo-neon)] font-semibold">clear guidance</span> and a way of living life. Each and{" "}
@@ -554,7 +554,7 @@ export default function AstrologerWebsite() {
                     ].map((point, i) => (
                       <li key={i} className="flex items-start gap-3">
                         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--tokyo-neon)]" />
-                        <p className="font-body text-base leading-relaxed text-[var(--tokyo-muted)]">{point}</p>
+                        <p className="font-body text-base leading-relaxed text-white">{point}</p>
                       </li>
                     ))}
                   </ul>
@@ -574,13 +574,13 @@ export default function AstrologerWebsite() {
             <CardContent className="space-y-6 p-8 md:p-10">
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
                   placeholder="Full Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                 />
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
                   placeholder="Email Address"
                   type="email"
                   value={email}
@@ -615,7 +615,7 @@ export default function AstrologerWebsite() {
                   <option value="+977">🇳🇵 +977</option>
                 </select>
                 <Input
-                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
                   placeholder="WhatsApp Number"
                   inputMode="tel"
                   value={whatsapp}
@@ -624,7 +624,7 @@ export default function AstrologerWebsite() {
               </div>
 
               <div className="space-y-2">
-                <label className="font-body block text-xs uppercase tracking-[0.16em] text-[var(--tokyo-muted)]">
+                <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
                   Choose a Date
                 </label>
                 <Input
@@ -669,11 +669,11 @@ export default function AstrologerWebsite() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <label className="font-body block text-xs uppercase tracking-[0.16em] text-[var(--tokyo-muted)]">
+                  <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
                     Pick a Time Slot
                   </label>
                   {selectedDate ? (
-                    <span className="font-body text-xs uppercase tracking-[0.12em] text-[var(--tokyo-muted)]">
+                    <span className="font-body text-xs uppercase tracking-[0.12em] text-white/70">
                       {isLoadingAvailability
                         ? "Loading..."
                         : `${bookedSlotsForDay.size} booked`}
@@ -715,11 +715,11 @@ export default function AstrologerWebsite() {
               <div className="rounded-xl border border-[var(--tokyo-line)] p-5 space-y-4" style={{ background: 'rgba(244,196,48,0.04)' }}>
                 <div>
                   <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details <span className="normal-case text-[var(--tokyo-muted)] tracking-normal">(Optional — for Kundali chart)</span></p>
-                  <p className="font-body text-xs text-[var(--tokyo-muted)]">Share your birth details to allow a personalised Kundali reading.</p>
+                  <p className="font-body text-xs text-white/70">Share your birth details to allow a personalised Kundali reading.</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Date of Birth</label>
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Date of Birth</label>
                     <Input
                       className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
                       type="date"
@@ -728,7 +728,7 @@ export default function AstrologerWebsite() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Time of Birth</label>
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Time of Birth</label>
                     <Input
                       className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
                       type="time"
@@ -738,10 +738,10 @@ export default function AstrologerWebsite() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Place of Birth</label>
+                  <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Place of Birth</label>
                   <Input
                     className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
-                    placeholder="City / Town (e.g. Mumbai, India)"
+                    placeholder="City, State, Country (e.g. Talala, Gujarat, India)"
                     value={birthPlace}
                     onChange={(e) => setBirthPlace(e.target.value)}
                   />

@@ -58,3 +58,12 @@ export async function updateBookingCompleted(date: string, slot: string, complet
   const { updateBookingCompleted } = await import("@/lib/booking-store-local");
   return updateBookingCompleted(date, slot, completed);
 }
+
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string) {
+  if (isVercel) {
+    const { updateBirthDetails } = await import("@/lib/booking-store-supabase");
+    return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace);
+  }
+  const { updateBirthDetails } = await import("@/lib/booking-store-local");
+  return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace);
+}

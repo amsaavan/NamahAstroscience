@@ -81,6 +81,15 @@ export async function updateBookingCompleted(date: string, slot: string, complet
     return { ok: true };
 }
 
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string): Promise<{ ok: boolean }> {
+    const { data: existing } = await supabase
+        .from("bookings").select("slot").eq("date", date).eq("slot", slot).maybeSingle();
+    if (!existing) return { ok: false };
+    const { error } = await supabase.from("bookings").update({ birth_date: birthDate, birth_time: birthTime, birth_place: birthPlace }).eq("date", date).eq("slot", slot);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+}
+
 function rowToRecord(row: Record<string, unknown>): BookingRecord {
     return {
         date: row.date as string, slot: row.slot as string,
