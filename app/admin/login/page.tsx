@@ -88,6 +88,7 @@ export default function AdminLoginPage() {
         setError(data.error ?? "Verification failed.");
         return;
       }
+      sessionStorage.setItem("admin_tab_session", "active");
       router.push("/admin/bookings");
       router.refresh();
     } catch {

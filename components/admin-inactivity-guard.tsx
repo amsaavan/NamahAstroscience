@@ -21,10 +21,17 @@ export default function AdminInactivityGuard() {
     const lastActivity = useRef(Date.now());
 
     const doLogout = useCallback(async () => {
+        sessionStorage.removeItem("admin_tab_session");
         await fetch("/api/admin/logout", { method: "POST" });
         router.push("/admin/login");
         router.refresh();
     }, [router]);
+
+    useEffect(() => {
+        if (sessionStorage.getItem("admin_tab_session") !== "active") {
+            doLogout();
+        }
+    }, [doLogout]);
 
     const clearAllTimers = () => {
         if (logoutTimer.current) clearTimeout(logoutTimer.current);
