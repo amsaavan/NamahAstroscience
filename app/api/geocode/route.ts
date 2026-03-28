@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         const res = await fetch(url, {
             headers: {
                 // Nominatim requires a descriptive User-Agent
-                "User-Agent": "NamahAstroscience/1.0 (namahastroscience@gmail.com)",
+                "User-Agent": "NamahAstroscience/1.0 (info@contact.namahastroscience.com)",
                 "Accept-Language": "en",
             },
             // Cache result for 24 hours — the same city rarely changes coordinates

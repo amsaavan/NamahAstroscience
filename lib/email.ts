@@ -124,7 +124,7 @@ export async function sendBookingConfirmation(
                 <td style="padding:20px 28px;">
                   <p style="margin:0 0 6px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Contact</p>
                   <p style="margin:0;font-size:14px;color:#e2e8f0;">📱 WhatsApp: <a href="https://wa.me/917984960585" style="color:#25D366;">+91 79849 60585</a></p>
-                  <p style="margin:4px 0 0;font-size:14px;color:#e2e8f0;">📧 Email: <a href="mailto:namahastroscience@gmail.com" style="color:#f4c430;">namahastroscience@gmail.com</a></p>
+                  <p style="margin:4px 0 0;font-size:14px;color:#e2e8f0;">📧 Email: <a href="mailto:info@contact.namahastroscience.com" style="color:#f4c430;">info@contact.namahastroscience.com</a></p>
                 </td>
               </tr>
             </table>
@@ -158,7 +158,7 @@ export async function sendBookingConfirmation(
     "",
     "Jinesh will reach out on WhatsApp to confirm.",
     "WhatsApp: +91 79849 60585",
-    "Email: namahastroscience@gmail.com",
+    "Email: info@contact.namahastroscience.com",
     "",
     "Thank you,",
     "Namah Astroscience",

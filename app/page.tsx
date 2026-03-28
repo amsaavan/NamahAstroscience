@@ -910,10 +910,10 @@ export default function AstrologerWebsite() {
           >
             <Mail className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />
             <a
-              href="mailto:namahastroscience@gmail.com"
+              href="mailto:info@contact.namahastroscience.com"
               style={{ color: "#f4c430", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600, fontSize: "0.75rem" }}
             >
-              namahastroscience@gmail.com
+              info@contact.namahastroscience.com
             </a>
           </div>
         </div>
