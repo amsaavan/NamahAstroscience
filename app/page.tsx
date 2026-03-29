@@ -108,11 +108,7 @@ function StarPicker({
 
 function ReviewCard({ review }: { review: ReviewRecord }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
+    <div className="w-[320px] md:w-[400px] flex-shrink-0 px-3">
       <Card className="h-full rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-none">
         <CardContent className="flex h-full flex-col justify-between space-y-4 p-6">
           <div className="flex gap-1">
@@ -126,7 +122,7 @@ function ReviewCard({ review }: { review: ReviewRecord }) {
               </span>
             ))}
           </div>
-          <p className="font-body flex-1 text-sm leading-relaxed text-[var(--tokyo-muted)]">
+          <p className="font-body flex-1 text-sm leading-relaxed text-white">
             &ldquo;{review.review}&rdquo;
           </p>
           <div className="flex items-center gap-3 border-t border-[var(--tokyo-line)] pt-4">
@@ -138,7 +134,7 @@ function ReviewCard({ review }: { review: ReviewRecord }) {
                 {review.name}
               </p>
               {review.location && (
-                <p className="font-body text-xs text-[var(--tokyo-muted)]">
+                <p className="font-body text-xs text-white">
                   {review.location}
                 </p>
               )}
@@ -146,7 +142,7 @@ function ReviewCard({ review }: { review: ReviewRecord }) {
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+    </div>
   );
 }
 
@@ -201,9 +197,22 @@ function ReviewsSection() {
     <section className="relative z-10 border-t border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
         <h2 className="font-display text-center text-6xl text-[var(--tokyo-neon)] md:text-7xl">Reviews</h2>
-        <p className="font-body mt-4 text-center text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">
-          What our clients say
-        </p>
+        <div className="mt-4 flex flex-col items-center justify-center gap-2">
+          <p className="font-body text-center text-sm uppercase tracking-[0.14em] text-white">
+            What our clients say
+          </p>
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-2 rounded-full border border-[var(--tokyo-line)] bg-[var(--tokyo-bg)]/50 px-4 py-1">
+              <span className="flex items-center gap-1 text-xs font-bold text-[#f4c430]">
+                ★ { (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) }
+              </span>
+              <span className="h-3 w-px bg-[var(--tokyo-line)]" />
+              <span className="font-body text-[10px] uppercase tracking-[0.1em] text-white">
+                {reviews.length} Total Reviews
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Submit Form */}
         <div className="mx-auto mt-10 max-w-2xl">
@@ -212,26 +221,26 @@ function ReviewsSection() {
               <h3 className="font-display text-3xl text-[var(--tokyo-neon)]">Leave a Review</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="Your Name"
                   value={rName}
                   onChange={(e) => setRName(e.target.value)}
                 />
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="City / Location (optional)"
                   value={rLocation}
                   onChange={(e) => setRLocation(e.target.value)}
                 />
               </div>
               <div className="space-y-1">
-                <label className="font-body block text-xs uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">
+                <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">
                   Your Rating
                 </label>
                 <StarPicker value={rRating} onChange={setRRating} />
               </div>
               <Textarea
-                className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                 placeholder="Share your experience..."
                 rows={4}
                 value={rText}
@@ -250,22 +259,54 @@ function ReviewsSection() {
           </Card>
         </div>
 
-        {/* Reviews Grid */}
-        <div className="mx-auto mt-10 max-w-6xl">
+        <div className="relative mt-12 w-full overflow-hidden">
           {isLoading ? (
-            <p className="font-body text-center text-sm text-[var(--tokyo-muted)]">Loading reviews…</p>
+            <p className="font-body text-center text-sm text-white">Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <p className="font-body text-center text-sm text-[var(--tokyo-muted)]">
+            <p className="font-body text-center text-sm text-white">
               No reviews yet — be the first to share your experience!
             </p>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          ) : reviews.length <= 3 ? (
+            /* Static Grid for 3 or fewer reviews */
+            <div className="mx-auto max-w-6xl grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {reviews.map((r) => (
                 <ReviewCard key={r.id} review={r} />
               ))}
             </div>
+          ) : (
+            /* Sliding Carousel for more than 3 reviews */
+            <>
+              {/* Side Gradients for fading effect */}
+              <div className="absolute left-0 top-0 z-20 h-full w-20 bg-gradient-to-r from-[#090f1d] to-transparent pointer-events-none" />
+              <div className="absolute right-0 top-0 z-20 h-full w-20 bg-gradient-to-l from-[#090f1d] to-transparent pointer-events-none" />
+
+              <div className="flex">
+                <motion.div
+                  className="flex"
+                  animate={{
+                    x: ["0%", "-33.333%"],
+                  }}
+                  transition={{
+                    x: {
+                      repeat: Infinity,
+                      repeatType: "loop",
+                      duration: reviews.length * 15,
+                      ease: "linear",
+                    },
+                  }}
+                  style={{ width: "fit-content" }}
+                  whileHover={{ animationPlayState: "paused" }}
+                >
+                  {/* Triple the array to ensure seamless looping without gaps */}
+                  {[...reviews, ...reviews, ...reviews].map((r, idx) => (
+                    <ReviewCard key={`${r.id}-${idx}`} review={r} />
+                  ))}
+                </motion.div>
+              </div>
+            </>
           )}
         </div>
+
       </motion.div>
     </section>
   );
@@ -279,72 +320,16 @@ export default function AstrologerWebsite() {
   const [whatsapp, setWhatsapp] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [statusMessage, setStatusMessage] = useState<string>("");
-  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateError, setDateError] = useState<string>("");
+
   // Birth details — optional, for Kundali
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
-  const [birthPlace, setBirthPlace] = useState("");
-
-  useEffect(() => {
-    if (!selectedDate) {
-      setBookedSlots([]);
-      return;
-    }
-
-    let active = true;
-    const controller = new AbortController();
-
-    const loadAvailability = async () => {
-      setIsLoadingAvailability(true);
-      try {
-        const response = await fetch(
-          `/api/availability?date=${encodeURIComponent(selectedDate)}`,
-          { signal: controller.signal }
-        );
-        if (!response.ok) {
-          throw new Error("failed_availability");
-        }
-
-        const data = (await response.json()) as AvailabilityResponse;
-        if (active) {
-          setBookedSlots(data.bookedSlots ?? []);
-        }
-      } catch (error) {
-        if ((error as Error).name === "AbortError") return;
-        if (active) {
-          setBookedSlots([]);
-          setStatusMessage("Could not load live availability. Try again.");
-        }
-      } finally {
-        if (active) {
-          setIsLoadingAvailability(false);
-        }
-      }
-    };
-
-    loadAvailability();
-
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [selectedDate]);
-
-  const slotLabel = (slot: string) => {
-    const [hStr, mStr] = slot.split(":");
-    const h24 = Number(hStr);
-    const m = Number(mStr);
-    const period = h24 >= 12 ? "PM" : "AM";
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-  };
-
-  const bookedSlotsForDay = useMemo(() => new Set(bookedSlots), [bookedSlots]);
+  const [birthCity, setBirthCity] = useState("");
+  const [birthState, setBirthState] = useState("");
+  const [birthCountry, setBirthCountry] = useState("");
 
   const today = useMemo(() => {
     const now = new Date();
@@ -354,18 +339,8 @@ export default function AstrologerWebsite() {
     return `${yyyy}-${mm}-${dd}`;
   }, []);
 
-  /** Current time in minutes since midnight (refreshed on each render by useMemo) */
-  const currentTimeMinutes = useMemo(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }, []);
 
-  const isSlotPast = (slot: string): boolean => {
-    if (selectedDate !== today) return false;
-    const [hStr, mStr] = slot.split(":");
-    const slotMinutes = Number(hStr) * 60 + Number(mStr);
-    return currentTimeMinutes >= slotMinutes;
-  };
+
 
   const maxDate = useMemo(() => {
     const d = new Date();
@@ -411,7 +386,7 @@ export default function AstrologerWebsite() {
               <p className="font-display text-3xl leading-none text-[var(--tokyo-neon)]">
                 Namah Astroscience
               </p>
-              <p className="font-body text-xs uppercase tracking-[0.22em] text-[var(--tokyo-muted-2)]">
+              <p className="font-body text-xs uppercase tracking-[0.22em] text-white">
                 Vedic Guidance Studio
               </p>
             </div>
@@ -428,7 +403,7 @@ export default function AstrologerWebsite() {
           transition={{ duration: 0.7 }}
           className="relative"
         >
-          <div className="pointer-events-none absolute -left-10 top-8 hidden h-72 w-[85%] rounded-full border border-[var(--star-dim)]/70 md:block" />
+
           <div className="pointer-events-none absolute left-4 top-16 hidden text-3xl text-[var(--star-white)]/85 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)] md:block">
             ✧
           </div>
@@ -446,11 +421,11 @@ export default function AstrologerWebsite() {
             <span className="absolute -left-[26%] inset-y-0 h-full w-[118%] rounded-full bg-[radial-gradient(circle_at_32%_36%,#FFE7A6_0%,#F4C430_45%,#8C5C00_100%)]" />
             <span className="absolute -inset-1 rounded-full bg-[radial-gradient(circle,#F4C430_0%,transparent_70%)] opacity-30 blur-[2px]" />
           </div>
-          <h2 className="font-display text-[clamp(4rem,12vw,8.2rem)] leading-[0.9] tracking-[0.07em] text-[var(--tokyo-neon)] drop-shadow-[0_0_16px_rgba(244,196,48,0.45)]">
+          <h2 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,8.2rem)] leading-[1.1] sm:leading-[0.9] tracking-[0.05em] sm:tracking-[0.07em] text-[var(--tokyo-neon)] drop-shadow-[0_0_16px_rgba(244,196,48,0.45)]">
             <span className="block">Namah</span>
-            <span className="mt-2 block">Astroscience</span>
+            <span className="mt-1 sm:mt-2 block">Astroscience</span>
           </h2>
-          <p className="font-body mt-5 max-w-xl text-base uppercase tracking-[0.12em] text-[var(--tokyo-muted)] md:text-lg">
+          <p className="font-body mt-6 max-w-xl text-sm sm:text-base uppercase tracking-[0.12em] text-white/90 md:text-lg">
             Cosmic timing, high clarity, and direct life strategy. A modern
             consultation flow with classic Vedic depth.
           </p>
@@ -467,10 +442,10 @@ export default function AstrologerWebsite() {
 
       {/* Services Section */}
       <section className="relative z-10 border-y border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16">
-        <h2 className="font-display text-center text-6xl text-[var(--tokyo-neon)] md:text-7xl">
+        <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
           Services
         </h2>
-        <p className="font-body mt-4 text-center text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Areas of astrological guidance offered</p>
+        <p className="font-body mt-4 text-center text-xs sm:text-sm uppercase tracking-[0.14em] text-white/80">Areas of astrological guidance offered</p>
         {(() => {
           const services = [
             { title: "Health Issues", desc: "Early detection through planetary insight and chart analysis." },
@@ -481,41 +456,34 @@ export default function AstrologerWebsite() {
             { title: "Abroad Study & Job", desc: "Planetary factors for overseas education and employment." },
             { title: "Gemstone Suggestion", desc: "Personalised gemstone recommendations to strengthen planets." },
           ];
-          const renderCard = (service: { title: string; desc: string }, index: number) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.07 }}
-              className="w-full"
-            >
-              <Card className="h-full rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-none">
-                <CardContent className="space-y-3 p-6">
-                  <Star className="h-5 w-5 text-[var(--tokyo-neon)]" />
-                  <h3 className="font-display text-2xl leading-tight text-[var(--tokyo-neon)]">
-                    {service.title}
-                  </h3>
-                  <p className="font-body text-sm leading-relaxed text-[var(--tokyo-muted)]">
-                    {service.desc}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
           return (
-            <div className="mx-auto mt-10 max-w-6xl space-y-6">
-              {/* Row 1 — 4 cards */}
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {services.slice(0, 4).map((s, i) => renderCard(s, i))}
-              </div>
-              {/* Row 2 — 3 cards centered */}
-              <div className="flex justify-center gap-6">
-                {services.slice(4).map((s, i) => (
-                  <div key={i} className="w-full max-w-[calc(25%-12px)]">
-                    {renderCard(s, i + 4)}
-                  </div>
-                ))}
-              </div>
+            <div className="mx-auto mt-10 max-w-6xl flex flex-wrap justify-center gap-6">
+              {services.map((s, i) => (
+                <div 
+                  key={i} 
+                  className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(25%-18px)] flex"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: i * 0.07 }}
+                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                    className="w-full"
+                  >
+                    <Card className="h-full rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-none transition-all hover:border-[var(--tokyo-neon)]/40 hover:shadow-[0_8px_30px_rgba(244,196,48,0.12)]">
+                      <CardContent className="space-y-3 p-6 sm:p-8 flex flex-col h-full">
+                        <Star className="h-5 w-5 text-[var(--tokyo-neon)] shrink-0" />
+                        <h3 className="font-display text-2xl leading-tight text-[var(--tokyo-neon)]">
+                          {s.title}
+                        </h3>
+                        <p className="font-body text-sm leading-relaxed text-white/90 flex-1">
+                          {s.desc}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </div>
+              ))}
             </div>
           );
         })()}
@@ -529,7 +497,7 @@ export default function AstrologerWebsite() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-display text-center text-5xl text-[var(--tokyo-neon)] md:text-6xl mb-10">About</h2>
+            <h2 className="font-display text-center text-4xl sm:text-5xl text-[var(--tokyo-neon)] md:text-6xl mb-10">About</h2>
             <Card className="rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)]">
               <CardContent className="p-8 md:p-12 space-y-6">
                 <div>
@@ -566,7 +534,7 @@ export default function AstrologerWebsite() {
       </section>
 
       <section id="booking-section" className="relative z-10 px-6 py-20">
-        <h2 className="font-display text-center text-6xl text-[var(--tokyo-neon)] md:text-7xl">
+        <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
           Schedule Session
         </h2>
         <div className="mx-auto mt-10 max-w-3xl">
@@ -574,13 +542,13 @@ export default function AstrologerWebsite() {
             <CardContent className="space-y-6 p-8 md:p-10">
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="Full Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                 />
                 <Input
-                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="Email Address"
                   type="email"
                   value={email}
@@ -588,12 +556,11 @@ export default function AstrologerWebsite() {
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <select
-                  className="tokyo-control tokyo-select font-body shrink-0 rounded-xl border border-[var(--tokyo-line)] px-2 py-3 text-sm outline-none"
+                  className="tokyo-control tokyo-select font-body shrink-0 rounded-xl border border-[var(--tokyo-line)] px-3 py-3 text-sm outline-none w-full sm:w-[110px]"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  style={{ minWidth: "90px" }}
                 >
                   <option value="+91">🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
@@ -615,7 +582,7 @@ export default function AstrologerWebsite() {
                   <option value="+977">🇳🇵 +977</option>
                 </select>
                 <Input
-                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/70"
+                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/60"
                   placeholder="WhatsApp Number"
                   inputMode="tel"
                   value={whatsapp}
@@ -635,18 +602,15 @@ export default function AstrologerWebsite() {
                   max={maxDate}
                   value={selectedDate}
                   onChange={(e) => {
-                    setSelectedSlot("");
                     setStatusMessage("");
                     const nextDate = e.target.value;
                     if (nextDate && nextDate < today) {
                       setSelectedDate("");
-                      setBookedSlots([]);
                       setDateError("Past dates are not allowed. Please select today or a future date.");
                       return;
                     }
                     if (nextDate && nextDate > maxDate) {
                       setSelectedDate("");
-                      setBookedSlots([]);
                       setDateError("Bookings are only accepted up to 7 days in advance.");
                       return;
                     }
@@ -667,55 +631,13 @@ export default function AstrologerWebsite() {
                 )}
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
-                    Pick a Time Slot
-                  </label>
-                  {selectedDate ? (
-                    <span className="font-body text-xs uppercase tracking-[0.12em] text-white/70">
-                      {isLoadingAvailability
-                        ? "Loading..."
-                        : `${bookedSlotsForDay.size} booked`}
-                    </span>
-                  ) : (
-                    <span className="font-body text-xs uppercase tracking-[0.12em] text-red-500">
-                      Select a date first
-                    </span>
-                  )}
-                </div>
 
-                <select
-                  className="tokyo-control tokyo-select font-body w-full rounded-xl border border-[var(--tokyo-line)] px-3 py-3 text-sm outline-none"
-                  value={selectedSlot}
-                  onChange={(e) => {
-                    setSelectedSlot(e.target.value);
-                    setStatusMessage("");
-                  }}
-                  disabled={!selectedDate || isLoadingAvailability}
-                >
-                  <option value="" disabled>
-                    {selectedDate ? "Select a time" : "Select a date first"}
-                  </option>
-                  {DAILY_SLOTS.map((slot) => {
-                    const isBooked = bookedSlotsForDay.has(slot);
-                    const isPast = isSlotPast(slot);
-                    const isUnavailable = isBooked || isPast;
-                    return (
-                      <option key={slot} value={slot} disabled={isUnavailable}>
-                        {slotLabel(slot)}
-                        {isBooked ? " (Booked)" : isPast ? " (Passed)" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
 
               {/* Birth Details Section */}
               <div className="rounded-xl border border-[var(--tokyo-line)] p-5 space-y-4" style={{ background: 'rgba(244,196,48,0.04)' }}>
                 <div>
-                  <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details <span className="normal-case text-[var(--tokyo-muted)] tracking-normal">(Optional — for Kundali chart)</span></p>
-                  <p className="font-body text-xs text-white/70">Share your birth details to allow a personalised Kundali reading.</p>
+                  <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details <span className="normal-case text-white tracking-normal">(Optional — for Kundali chart)</span></p>
+                  <p className="font-body text-xs text-white">Share your birth details to allow a personalised Kundali reading.</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
@@ -737,19 +659,39 @@ export default function AstrologerWebsite() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Place of Birth</label>
-                  <Input
-                    className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
-                    placeholder="City, State, Country (e.g. Talala, Gujarat, India)"
-                    value={birthPlace}
-                    onChange={(e) => setBirthPlace(e.target.value)}
-                  />
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-1">
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">City</label>
+                    <Input
+                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
+                      placeholder="e.g. Talala"
+                      value={birthCity}
+                      onChange={(e) => setBirthCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">State</label>
+                    <Input
+                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
+                      placeholder="e.g. Gujarat"
+                      value={birthState}
+                      onChange={(e) => setBirthState(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">Country</label>
+                    <Input
+                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
+                      placeholder="e.g. India"
+                      value={birthCountry}
+                      onChange={(e) => setBirthCountry(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
               <Textarea
-                className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
+                className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                 placeholder="Your Question / Notes (Optional)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -785,17 +727,7 @@ export default function AstrologerWebsite() {
                     );
                     return;
                   }
-                  if (!selectedSlot) {
-                    setStatusMessage("Please pick an available time slot.");
-                    return;
-                  }
-                  if (isSlotPast(selectedSlot)) {
-                    setStatusMessage(
-                      "This time slot has already passed. Please choose a future slot."
-                    );
-                    setSelectedSlot("");
-                    return;
-                  }
+
 
                   setIsSubmitting(true);
 
@@ -809,10 +741,11 @@ export default function AstrologerWebsite() {
                         whatsapp: `${countryCode.replace("-CA", "")} ${whatsapp}`.trim(),
                         notes,
                         date: selectedDate,
-                        slot: selectedSlot,
+                        slot: "Standard",
+
                         birthDate: birthDate || undefined,
                         birthTime: birthTime || undefined,
-                        birthPlace: birthPlace || undefined,
+                        birthPlace: [birthCity, birthState, birthCountry].filter(Boolean).join(" | "),
                       }),
                     });
 
@@ -821,19 +754,9 @@ export default function AstrologerWebsite() {
                     if (response.status === 409) {
                       setStatusMessage(
                         data.error ??
-                        "That slot was just booked. Please select another."
+                        "That date is no longer available. Please select another."
                       );
-                      setSelectedSlot("");
-
-                      const refresh = await fetch(
-                        `/api/availability?date=${encodeURIComponent(selectedDate)}`
-                      );
-                      if (refresh.ok) {
-                        const refreshed =
-                          (await refresh.json()) as AvailabilityResponse;
-                        setBookedSlots(refreshed.bookedSlots ?? []);
-                      }
-
+                      setIsSubmitting(false);
                       return;
                     }
 
@@ -847,12 +770,9 @@ export default function AstrologerWebsite() {
                       : "Booking saved! A confirmation email will be sent to you shortly.";
 
                     setStatusMessage(
-                      `Booked: ${selectedDate} at ${slotLabel(selectedSlot)}. ${emailMessage}`
+                      `Consultation requested for ${selectedDate}. ${emailMessage}`
                     );
-                    setBookedSlots((prev) =>
-                      Array.from(new Set([...prev, selectedSlot])).sort()
-                    );
-                    setSelectedSlot("");
+
                   } catch {
                     setStatusMessage("Booking failed due to a network error.");
                   } finally {
@@ -862,6 +782,26 @@ export default function AstrologerWebsite() {
               >
                 <span>{isSubmitting ? "Booking..." : "Confirm Appointment"}</span>
               </Button>
+
+              <div className="mt-4 border-t border-[var(--tokyo-line)] pt-4 space-y-4">
+                <div className="flex items-center justify-center gap-2">
+                  <CalendarDays className="h-3.5 w-3.5 text-[var(--tokyo-neon)]" />
+                  <p className="font-body text-[10px] uppercase tracking-[0.14em] text-[var(--tokyo-muted)] font-bold">Consultation Hours</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center gap-4 sm:gap-8">
+                  <div className="text-center sm:text-right">
+                    <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--tokyo-neon)] font-bold mb-1">🇮🇳 India (IST)</p>
+                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Mon – Fri: <span className="font-bold text-white">1:30 PM – 3:30 PM</span></p>
+                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Sat – Sun: <span className="font-bold text-white">4:00 PM – 8:00 PM</span></p>
+                  </div>
+                  <div className="hidden sm:block w-px h-10 bg-[var(--tokyo-line)] self-center" />
+                  <div className="text-center sm:text-left">
+                    <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--tokyo-neon)] font-bold mb-1">🇨🇦 Canada (Local)</p>
+                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Mon – Fri: <span className="font-bold text-white">6:00 PM – 8:00 PM</span></p>
+                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Sat: <span className="font-bold text-white">2:00 PM – 6:00 PM</span></p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -872,10 +812,10 @@ export default function AstrologerWebsite() {
 
 
       <section className="relative z-10 border-t border-[var(--tokyo-line)] bg-[#0b1220] px-6 py-14 text-center">
-        <h2 className="font-display mb-2 text-5xl text-[var(--tokyo-neon)]">
+        <h2 className="font-display mb-2 text-4xl sm:text-5xl text-[var(--tokyo-neon)]">
           Contact
         </h2>
-        <p className="font-body mb-8 text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Feel free to reach out on any of the below</p>
+        <p className="font-body mb-8 text-xs sm:text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Feel free to reach out on any of the below</p>
         <p className="font-display text-3xl text-[var(--tokyo-neon)] mb-6">Jinesh Shah</p>
         <div className="mx-auto flex max-w-4xl flex-col flex-wrap justify-center gap-4 md:flex-row">
           <div
@@ -910,20 +850,11 @@ export default function AstrologerWebsite() {
           >
             <Mail className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />
             <a
-              href="mailto:info@contact.namahastroscience.com"
+              href="mailto:namahastroscience@gmail.com"
               style={{ color: "#f4c430", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600, fontSize: "0.75rem" }}
             >
-              info@contact.namahastroscience.com
+              namahastroscience@gmail.com
             </a>
-          </div>
-        </div>
-        <div className="mx-auto mt-4 max-w-3xl">
-          <div
-            className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em]"
-            style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
-          >
-            <CalendarDays className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />
-            <span style={{ fontWeight: 600, color: "#f8fafc" }}>Mon – Sat &nbsp;|&nbsp; 9 AM – 7 PM</span>
           </div>
         </div>
       </section>

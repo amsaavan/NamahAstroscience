@@ -32,14 +32,7 @@ async function getTransporter() {
   });
 }
 
-function formatSlot(slot: string) {
-  const [hStr, mStr] = slot.split(":");
-  const h24 = Number(hStr);
-  const m = Number(mStr);
-  const period = h24 >= 12 ? "PM" : "AM";
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
+
 
 // ─── Customer Confirmation Email ────────────────────────────────────────────
 
@@ -50,7 +43,7 @@ export async function sendBookingConfirmation(
     return { sent: false, reason: "smtp_not_configured" };
   }
 
-  const timeLabel = formatSlot(booking.slot);
+
 
   const html = `
 <!DOCTYPE html>
@@ -87,12 +80,7 @@ export async function sendBookingConfirmation(
                         <span style="font-size:16px;color:#f4c430;font-weight:600;">${booking.date}</span>
                       </td>
                     </tr>
-                    <tr>
-                      <td style="padding:10px 0;border-bottom:1px solid #1e2a45;">
-                        <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Time</span><br>
-                        <span style="font-size:16px;color:#f4c430;font-weight:600;">${timeLabel}</span>
-                      </td>
-                    </tr>
+
                     ${booking.notes ? `
                     <tr>
                       <td style="padding:10px 0;">
@@ -153,7 +141,6 @@ export async function sendBookingConfirmation(
     "",
     "Your consultation has been booked successfully.",
     `Date: ${booking.date}`,
-    `Time: ${timeLabel}`,
     booking.notes ? `Notes: ${booking.notes}` : "",
     "",
     "Jinesh will reach out on WhatsApp to confirm.",
@@ -195,7 +182,7 @@ export async function sendAdminBookingNotification(
     return { sent: false, reason: "admin_email_not_configured" };
   }
 
-  const timeLabel = formatSlot(booking.slot);
+
 
   const html = `
 <!DOCTYPE html>
@@ -253,10 +240,7 @@ export async function sendAdminBookingNotification(
                     <td style="width:130px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Date</td>
                     <td style="font-size:15px;color:#f4c430;font-weight:600;padding:6px 0;">${booking.date}</td>
                   </tr>
-                  <tr>
-                    <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Time</td>
-                    <td style="font-size:15px;color:#f4c430;font-weight:600;padding:6px 0;">${timeLabel}</td>
-                  </tr>
+
                    ${booking.notes ? `
                   <tr>
                     <td style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;vertical-align:top;">Notes</td>
@@ -300,7 +284,6 @@ export async function sendAdminBookingNotification(
     `Email: ${booking.email}`,
     `WhatsApp: ${booking.whatsapp}`,
     `Date: ${booking.date}`,
-    `Time: ${timeLabel}`,
     `Notes: ${booking.notes || "-"}`,
     `Booked At: ${booking.createdAt}`,
   ].join("\n");
@@ -311,7 +294,7 @@ export async function sendAdminBookingNotification(
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: process.env.ADMIN_NOTIFY_EMAIL,
-      subject: `🔔 New Booking — ${booking.fullName} · ${booking.date} at ${timeLabel}`,
+      subject: `🔔 New Booking — ${booking.fullName} · ${booking.date}`,
       text,
       html,
     });

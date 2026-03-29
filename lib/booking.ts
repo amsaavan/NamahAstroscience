@@ -1,12 +1,4 @@
-export const DAILY_SLOTS = (() => {
-  const slots: string[] = [];
-  for (let minutes = 9 * 60; minutes <= 18 * 60; minutes += 60) {
-    const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
-    const mm = String(minutes % 60).padStart(2, "0");
-    slots.push(`${hh}:${mm}`);
-  }
-  return slots;
-})();
+export const DEFAULT_SLOT = "Standard";
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -30,4 +22,5 @@ export type BookingsByDate = Record<string, Record<string, BookingRecord>>;
 
 export const isValidDate = (value: string) => DATE_RE.test(value);
 
-export const isValidSlot = (value: string) => DAILY_SLOTS.includes(value);
+export const isValidSlot = (value: string) => value === DEFAULT_SLOT || value.length > 0;
+

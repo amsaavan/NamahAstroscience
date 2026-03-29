@@ -100,7 +100,7 @@ export default function AdminLoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#060B1A] px-6 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         {/* Card */}
         <div className="rounded-2xl border border-[#1e2a45] bg-[#0d1526] shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">
           {/* Header */}
@@ -158,7 +158,7 @@ export default function AdminLoginPage() {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                     placeholder="_ _ _ _ _ _"
-                    className="w-full rounded-xl border border-[#1e2a45] bg-[#111a2e] px-4 py-4 text-center text-3xl font-bold tracking-[12px] text-[#f4c430] placeholder:text-[#2e3a52] outline-none focus:border-[#f4c430]/50 focus:ring-1 focus:ring-[#f4c430]/30 transition"
+                    className="w-full rounded-xl border border-[#1e2a45] bg-[#111a2e] px-4 py-4 text-center text-2xl sm:text-3xl font-bold tracking-[8px] sm:tracking-[12px] text-[#f4c430] placeholder:text-[#2e3a52] outline-none focus:border-[#f4c430]/50 focus:ring-1 focus:ring-[#f4c430]/30 transition"
                     autoFocus
                   />
 

@@ -23,20 +23,14 @@ export async function listBookings(date?: string): Promise<BookingRecord[]> {
 }
 
 export async function createBooking(record: BookingRecord): Promise<{ ok: boolean; reason?: string }> {
-    // Check if slot is already taken
-    const { data: existingSlot } = await supabase
-        .from("bookings").select("slot").eq("date", record.date).eq("slot", record.slot).maybeSingle();
-    if (existingSlot) return { ok: false, reason: "slot_taken" };
-
-    // Check if same person (name + email + whatsapp) already has any booking
-    const { data: existingPerson } = await supabase
+    // Check if same email OR same whatsapp already has a booking ON THE SAME DATE
+    const { data: existingSameDay } = await supabase
         .from("bookings")
         .select("slot")
-        .eq("full_name", record.fullName)
-        .eq("email", record.email)
-        .eq("whatsapp", record.whatsapp)
+        .eq("date", record.date)
+        .or(`email.eq."${record.email}",whatsapp.eq."${record.whatsapp}"`)
         .maybeSingle();
-    if (existingPerson) return { ok: false, reason: "duplicate_person" };
+    if (existingSameDay) return { ok: false, reason: "duplicate_person_same_day" };
 
     const { error } = await supabase.from("bookings").insert({
         date: record.date, slot: record.slot, full_name: record.fullName,

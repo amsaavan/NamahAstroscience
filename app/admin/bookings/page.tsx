@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 import AdminInactivityGuard from "@/components/admin-inactivity-guard";
 import { moonposition } from "astronomia";
 
@@ -885,9 +886,11 @@ function KundaliChartSVG({
 function KundaliModal({
   booking,
   onClose,
+  onUpdate,
 }: {
   booking: BookingRecord;
   onClose: () => void;
+  onUpdate: (updatedBooking: BookingRecord) => void;
 }) {
   const [geo, setGeo] = useState<GeoResult>(null);
   const [geoLoading, setGeoLoading] = useState(false);
@@ -895,11 +898,24 @@ function KundaliModal({
   const [activeChartTab, setActiveChartTab] = useState<"D1" | "D9" | "Chalit" | "Gochar">("D1");
 
   // Editable birth details (local state)
+  // Extract structured birth place if available (City | State | Country)
+  const initialPlace = booking.birthPlace || "";
+  const parts = initialPlace.split(" | ");
+  
   const [editDate, setEditDate] = useState(booking.birthDate || "");
   const [editTime, setEditTime] = useState(booking.birthTime || "");
-  const [editPlace, setEditPlace] = useState(booking.birthPlace || "");
+  const [editCity, setEditCity] = useState(parts[0] || "");
+  const [editState, setEditState] = useState(parts[1] || "");
+  const [editCountry, setEditCountry] = useState(parts[2] || "");
+  
+  const editPlace = [editCity, editState, editCountry].filter(Boolean).join(" | ");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+
+  // Default coordinates fallback
+  const currentLat = geo?.lat ?? 23.0;
+  const currentLon = geo?.lon ?? 72.0;
+
 
   // Track if anything changed
   const hasChanges =
@@ -907,13 +923,21 @@ function KundaliModal({
     editTime !== (booking.birthTime || "") ||
     editPlace !== (booking.birthPlace || "");
 
-  // Geocode whenever editPlace changes
+  // Geocode whenever birth details change
   useEffect(() => {
-    if (!editPlace) { setGeo(null); return; }
+    const params = new URLSearchParams();
+    if (editCity) params.append("city", editCity);
+    if (editState) params.append("state", editState);
+    if (editCountry) params.append("country", editCountry);
+    // If no structured parts, try the whole string as fallback
+    if (!editCity && !editState && !editCountry && editPlace) params.append("place", editPlace);
+    
+    if (params.toString() === "") { setGeo(null); return; }
+
     let cancelled = false;
     setGeoLoading(true);
     setGeoError("");
-    fetch(`/api/geocode?place=${encodeURIComponent(editPlace)}`)
+    fetch(`/api/geocode?${params.toString()}`)
       .then((r) => r.json())
       .then(
         (data: {
@@ -944,18 +968,15 @@ function KundaliModal({
     };
   }, [editPlace]);
 
-  const latDeg = geo?.lat ?? 23.0;
-  const lonDeg = geo?.lon ?? 72.0;
-
   const chart = useMemo(
     () =>
       computeChart(
         editDate || "2000-01-01",
         editTime || "12:00",
-        latDeg,
-        lonDeg,
+        currentLat,
+        currentLon,
       ),
-    [editDate, editTime, latDeg, lonDeg],
+    [editDate, editTime, currentLat, currentLon],
   );
 
   const moonData = chart.planets.find((p) => p.planet === "Mo")!;
@@ -1018,10 +1039,11 @@ function KundaliModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-6 pb-16"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-6 pb-16 print-container"
       style={{ background: "rgba(6,11,26,0.94)", backdropFilter: "blur(6px)" }}
     >
       <div
+        id="kundali-modal-content"
         className="relative mx-auto w-full max-w-4xl rounded-2xl border border-[#1e2a45] shadow-2xl"
         style={{ background: "#0d1526" }}
       >
@@ -1044,16 +1066,16 @@ function KundaliModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[#f4c430]/40 px-3 py-1.5 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition"
+            className="rounded-lg border border-[#f4c430]/40 px-3 py-1.5 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition print-hide"
           >
             ✕ Close
           </button>
         </div>
 
         {/* Birth Details Row — Editable */}
-        <div className="grid grid-cols-3 gap-4 px-8 py-4 border-b border-[#1e2a45]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 px-6 sm:px-8 py-4 border-b border-[#1e2a45]">
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
+            <p className="text-[10px] uppercase tracking-[2px] text-white">
               Date of Birth
             </p>
             <input
@@ -1064,7 +1086,7 @@ function KundaliModal({
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
+            <p className="text-[10px] uppercase tracking-[2px] text-white">
               Time of Birth
             </p>
             <input
@@ -1075,21 +1097,39 @@ function KundaliModal({
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280]">
-              Place of Birth
-            </p>
+            <p className="text-[10px] uppercase tracking-[2px] text-white">City</p>
             <input
               type="text"
-              placeholder="City, State, Country"
-              value={editPlace}
-              onChange={(e) => { setEditPlace(e.target.value); setSaveMsg(""); }}
+              placeholder="e.g. Talala"
+              value={editCity}
+              onChange={(e) => { setEditCity(e.target.value); setSaveMsg(""); }}
+              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-white">State</p>
+            <input
+              type="text"
+              placeholder="e.g. Gujarat"
+              value={editState}
+              onChange={(e) => { setEditState(e.target.value); setSaveMsg(""); }}
+              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-white">Country</p>
+            <input
+              type="text"
+              placeholder="e.g. India"
+              value={editCountry}
+              onChange={(e) => { setEditCountry(e.target.value); setSaveMsg(""); }}
               className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
             />
           </div>
         </div>
         {/* Save bar */}
         {(hasChanges || saveMsg) && (
-          <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-3">
+          <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-3 print-hide">
             {hasChanges && (
               <button
                 type="button"
@@ -1112,9 +1152,13 @@ function KundaliModal({
                     if (!r.ok) {
                       setSaveMsg("Failed to save.");
                     } else {
-                      booking.birthDate = editDate;
-                      booking.birthTime = editTime;
-                      booking.birthPlace = editPlace;
+                      const updated = {
+                        ...booking,
+                        birthDate: editDate,
+                        birthTime: editTime,
+                        birthPlace: editPlace,
+                      };
+                      onUpdate(updated);
                       setSaveMsg("✓ Saved");
                     }
                   } catch {
@@ -1142,7 +1186,7 @@ function KundaliModal({
             {geoLoading ? (
               <>
                 <span className="h-2 w-2 rounded-full bg-[#f4c430] animate-pulse inline-block" />
-                <span className="text-[#6b7280]">Resolving coordinates…</span>
+                <span className="text-white">Resolving coordinates…</span>
               </>
             ) : geo ? (
               <>
@@ -1151,7 +1195,7 @@ function KundaliModal({
                   📍 {geo.lat.toFixed(4)}°N, {geo.lon.toFixed(4)}°E
                 </span>
                 <span
-                  className="text-[#4b5563] truncate max-w-xs"
+                  className="text-white truncate max-w-xs"
                   title={geo.displayName}
                 >
                   — {geo.displayName}
@@ -1172,18 +1216,18 @@ function KundaliModal({
         {/* Ascendant + current dasha banner */}
         <div className="px-8 py-2.5 border-b border-[#1e2a45] flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <span className="uppercase tracking-[2px] text-[#6b7280]">
+            <span className="uppercase tracking-[2px] text-white">
               Ascendant (Lagna):
             </span>
             <span className="font-bold text-[#f4c430] text-sm">{ascRashi}</span>
           </div>
           {currentDasha && (
             <div className="flex items-center gap-2 ml-auto">
-              <span className="text-[#6b7280]">Current Mahadasha:</span>
+              <span className="text-white">Current Mahadasha:</span>
               <span className="font-bold text-[#a78bfa]">
                 {PLANET_FULL[currentDasha.planet]}
               </span>
-              <span className="text-[#4b5563]">
+              <span className="text-white">
                 until {fmtDate(currentDasha.endDate)}
               </span>
             </div>
@@ -1264,7 +1308,7 @@ function KundaliModal({
             
             {/* Planetary Positions Table */}
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">
+              <p className="text-[10px] uppercase tracking-[2px] text-white mb-2">
                 Planetary Positions
               </p>
               <div className="rounded-xl border border-[#1e2a45] overflow-x-auto">
@@ -1285,7 +1329,7 @@ function KundaliModal({
                       ].map((h) => (
                         <th
                           key={h}
-                          className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider"
+                          className="px-3 py-2 text-left text-white font-normal uppercase tracking-wider"
                         >
                           {h}
                         </th>
@@ -1372,7 +1416,7 @@ function KundaliModal({
             </div>
 
             {/* Legend */}
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#4b5563]">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-white">
               <span>
                 <span className="font-bold text-red-400">C</span> = Combust
               </span>
@@ -1380,8 +1424,7 @@ function KundaliModal({
                 <span className="font-bold text-blue-400">R</span> = Retrograde
               </span>
               <span>
-                Su=Sun Mo=Moon Ma=Mars Me=Mercury Ju=Jupiter Ve=Venus Sa=Saturn
-                Ra=Rahu Ke=Ketu
+                Su=Sun, Mo=Moon, Ma=Mars, Me=Mercury, Ju=Jupiter, Ve=Venus, Sa=Saturn, Ra=Rahu, Ke=Ketu
               </span>
             </div>
           </div>
@@ -1389,9 +1432,9 @@ function KundaliModal({
 
         {/* Vimshottari Dasha */}
         <div className="px-8 pb-6">
-          <p className="text-[10px] uppercase tracking-[2px] text-[#6b7280] mb-2">
+          <p className="text-[10px] uppercase tracking-[2px] text-white mb-2">
             Vimshottari Dasha
-            <span className="ml-2 normal-case tracking-normal text-[#4b5563]">
+            <span className="ml-2 normal-case tracking-normal text-white">
               — Balance at birth:{" "}
               {PLANET_FULL[NAKSHATRA_LORDS[moonData.nakshatraIdx]]}{" "}
               {(
@@ -1408,7 +1451,7 @@ function KundaliModal({
                   {["Mahadasha", "Period", "Start", "End"].map((h) => (
                     <th
                       key={h}
-                      className="px-3 py-2 text-left text-[#6b7280] font-normal uppercase tracking-wider"
+                      className="px-3 py-2 text-left text-white font-normal uppercase tracking-wider"
                     >
                       {h}
                     </th>
@@ -1427,7 +1470,7 @@ function KundaliModal({
                     }}
                   >
                     <td
-                      className="px-3 py-2 font-bold"
+                      className="px-6 py-2 font-bold"
                       style={{ color: d.isCurrent ? "#a78bfa" : "#e2e8f0" }}
                     >
                       {d.isCurrent && "▶ "}
@@ -1451,14 +1494,14 @@ function KundaliModal({
 
         {/* Footer */}
         <div className="px-8 pb-5 flex items-center justify-between gap-4 border-t border-[#1e2a45] pt-4">
-          <p className="text-[10px] text-[#4b5563] max-w-sm">
+          <p className="text-[10px] text-white max-w-sm">
             * Positions use mean planetary motion (Vedic approximation). For
             precise Kundali consult Jinesh Shah directly.
           </p>
           <button
             type="button"
             onClick={() => window.print()}
-            className="rounded-lg border border-[#f4c430] px-4 py-2 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition"
+            className="rounded-lg border border-[#f4c430] px-4 py-2 text-xs text-[#f4c430] hover:bg-[#f4c430]/10 transition print-hide"
           >
             🖨 Print / Save PDF
           </button>
@@ -1521,6 +1564,43 @@ export default function AdminBookingsPage() {
   const activeBookings = bookings.filter((b) => !b.completed);
   const completedBookings = bookings.filter((b) => b.completed);
 
+  const handleExportToExcel = () => {
+    if (completedBookings.length === 0) return;
+
+    // Flatten data for Excel
+    const dataToExport = completedBookings.map((b) => ({
+      "Consultation Date": b.date,
+      "Full Name": b.fullName,
+      Email: b.email,
+      WhatsApp: b.whatsapp,
+      "Birth Date": b.birthDate || "N/A",
+      "Birth Time": b.birthTime || "N/A",
+      "Birth Place": b.birthPlace || "N/A",
+      "Fees Paid": b.feesPaid ? "Yes" : "No",
+      "Booking Status": "Completed",
+      "Created At": new Date(b.createdAt).toLocaleString(),
+      Notes: b.notes || "",
+    }));
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Completed Consultations");
+
+    // Auto-size columns (basic)
+    const maxWidths = dataToExport.reduce((acc, row) => {
+      Object.entries(row).forEach(([key, val], idx) => {
+        const len = String(val).length;
+        if (!acc[idx] || len > acc[idx]) acc[idx] = len;
+      });
+      return acc;
+    }, [] as number[]);
+    worksheet["!cols"] = maxWidths.map(w => ({ wch: Math.min(Math.max(w, 10), 40) }));
+
+    // Generate file and trigger download
+    XLSX.writeFile(workbook, `Namah_Astroscience_Completed_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   const renderTable = (list: BookingRecord[], isCompletedSection: boolean) => (
     <div className="mt-6 overflow-x-auto rounded-xl border border-[#d6c7b2] bg-white">
       <table className="min-w-full text-left text-sm text-[#2b1b12]">
@@ -1528,7 +1608,6 @@ export default function AdminBookingsPage() {
           <tr>
             {[
               "Date",
-              "Time",
               "Name",
               "Email",
               "WhatsApp",
@@ -1555,7 +1634,7 @@ export default function AdminBookingsPage() {
             </tr>
           ) : (
             list.map((booking) => {
-              const rowKey = `${booking.date}|${booking.slot}`;
+              const rowKey = `${booking.date}|${booking.slot}|${booking.createdAt}`;
               const hasBirth = Boolean(booking.birthDate);
               return (
                 <tr
@@ -1563,7 +1642,6 @@ export default function AdminBookingsPage() {
                   className="border-t border-[#efe4d6] group hover:bg-[#faf6f0]"
                 >
                   <td className="px-4 py-3 align-middle">{booking.date}</td>
-                  <td className="px-4 py-3 align-middle">{booking.slot}</td>
                   <td className="px-4 py-3 align-middle font-medium">
                     {booking.fullName}
                   </td>
@@ -1637,16 +1715,15 @@ export default function AdminBookingsPage() {
                   <td className="px-4 py-3 align-middle">
                     <button
                       type="button"
-                      disabled={!hasBirth}
                       title={
                         hasBirth
                           ? "View Kundali chart"
-                          : "No birth details provided"
+                          : "Add birth details to generate Kundali"
                       }
-                      onClick={() => hasBirth && setKundaliBooking(booking)}
-                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 ${hasBirth ? "bg-purple-700 text-white hover:bg-purple-900" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
+                      onClick={() => setKundaliBooking(booking)}
+                      className={`flex w-full items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 ${hasBirth ? "bg-purple-700 text-white hover:bg-purple-900" : "bg-amber-100 text-amber-800 ring-1 ring-amber-400 hover:bg-amber-200"}`}
                     >
-                      🔮 {hasBirth ? "View" : "N/A"}
+                      🔮 {hasBirth ? "View" : "Add Details"}
                     </button>
                   </td>
                   <td className="px-4 py-3 align-middle">
@@ -1750,16 +1827,20 @@ export default function AdminBookingsPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#f5efe6] px-6 py-12 text-[#5a1e1e]">
+    <main className="min-h-screen bg-[#f5efe6] px-4 sm:px-6 py-8 sm:py-12 text-[#5a1e1e]">
       <AdminInactivityGuard />
       {kundaliBooking && (
         <KundaliModal
           booking={kundaliBooking}
           onClose={() => setKundaliBooking(null)}
+          onUpdate={(updated) => {
+            setBookings(prev => prev.map(b => (b.date === updated.date && b.slot === updated.slot) ? updated : b));
+            setKundaliBooking(updated);
+          }}
         />
       )}
 
-      <div className="mx-auto max-w-6xl">
+      <div id="admin-dashboard-main" className="mx-auto max-w-6xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold text-[#7a1c1c]">
@@ -1853,9 +1934,22 @@ export default function AdminBookingsPage() {
         </div>
 
         {/* Tab Content */}
-        <div className="mt-2">
+        <div className="mt-2 text-[#5a1e1e]">
           {activeTab === "active" && renderTable(activeBookings, false)}
-          {activeTab === "completed" && renderTable(completedBookings, true)}
+          {activeTab === "completed" && (
+            <>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleExportToExcel}
+                  className="flex items-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-green-800"
+                >
+                  📊 Export All Completed to Excel
+                </button>
+              </div>
+              {renderTable(completedBookings, true)}
+            </>
+          )}
         </div>
       </div>
     </main>

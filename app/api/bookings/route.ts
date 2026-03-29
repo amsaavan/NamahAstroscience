@@ -26,14 +26,20 @@ type BookingPayload = {
 };
 
 function normalize(payload: BookingPayload): BookingRecord {
+  const now = new Date();
+  const timestamp = now.getTime();
+  const rawSlot = (payload.slot || "Standard").trim();
+  // Ensure every booking has a unique slot internally to allow multiple same-day appointments
+  const uniqueSlot = `${rawSlot}-${timestamp}`;
+
   return {
     fullName: payload.fullName.trim(),
     email: payload.email.trim(),
     whatsapp: payload.whatsapp.trim(),
     notes: (payload.notes ?? "").trim(),
     date: payload.date.trim(),
-    slot: payload.slot.trim(),
-    createdAt: new Date().toISOString(),
+    slot: uniqueSlot,
+    createdAt: now.toISOString(),
     feesPaid: false,
     birthDate: (payload.birthDate ?? "").trim(),
     birthTime: (payload.birthTime ?? "").trim(),
@@ -62,13 +68,9 @@ function maxBookingDateString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Returns true when a slot (HH:MM) has already passed for today. */
 function isSlotInPast(slot: string): boolean {
-  const [hStr, mStr] = slot.split(":");
-  const now = new Date();
-  const slotMinutes = Number(hStr) * 60 + Number(mStr);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return nowMinutes >= slotMinutes;
+  // Always returns false as we are removing specific time slots
+  return false;
 }
 
 export async function GET(request: NextRequest) {
@@ -119,27 +121,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!isValidSlot(booking.slot)) {
-    return NextResponse.json(
-      { error: "Invalid slot selected." },
-      { status: 400 }
-    );
-  }
+  // Validation for slot-specific timings is removed as we now only book dates.
+  // The 'slot' parameter is now usually hardcoded as 'Standard' on the frontend.
 
-  // Reject slots that have already passed when booking is for today
-  if (booking.date === todayLocalDateString() && isSlotInPast(booking.slot)) {
-    return NextResponse.json(
-      { error: "This time slot has already passed. Please choose a future slot." },
-      { status: 400 }
-    );
-  }
 
   try {
     const result = await createBooking(booking);
     if (!result.ok) {
-      if (result.reason === "duplicate_person") {
+      if (result.reason === "duplicate_person_same_day") {
         return NextResponse.json(
-          { error: "You have already made a booking. Only one booking per person is allowed." },
+          { error: "You have already booked a session for this date using this email or phone number. Please choose another date or contact us if you need to make changes." },
           { status: 409 }
         );
       }
@@ -187,7 +178,8 @@ export async function PATCH(request: NextRequest) {
     );
   }
   if (!isValidSlot(slot)) {
-    return NextResponse.json({ error: "Invalid slot selected." }, { status: 400 });
+    // We allow any non-empty slot string now for backward compatibility
+    if (!slot) return NextResponse.json({ error: "Slot identification is required." }, { status: 400 });
   }
 
   if (body.feesPaid !== undefined) {
@@ -255,7 +247,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   if (!isValidSlot(slot)) {
-    return NextResponse.json({ error: "Invalid slot selected." }, { status: 400 });
+    if (!slot) return NextResponse.json({ error: "Slot identification is required." }, { status: 400 });
   }
 
   const result = await cancelBooking(date, slot);

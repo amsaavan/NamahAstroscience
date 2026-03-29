@@ -47,19 +47,15 @@ export async function createBooking(record: BookingRecord): Promise<{ ok: boolea
     const run = async (): Promise<{ ok: boolean; reason?: string }> => {
         const store = await readStore();
         const day = store[record.date] ?? {};
-        if (day[record.slot]) return { ok: false, reason: "slot_taken" };
 
-        // Check duplicate person across all dates
-        for (const dateKey of Object.keys(store)) {
-            for (const slotKey of Object.keys(store[dateKey])) {
-                const b = store[dateKey][slotKey];
-                if (
-                    b.fullName === record.fullName &&
-                    b.email === record.email &&
-                    b.whatsapp === record.whatsapp
-                ) {
-                    return { ok: false, reason: "duplicate_person" };
-                }
+        // Check if same email OR same whatsapp already has a booking ON THE SAME DATE
+        for (const slotKey of Object.keys(day)) {
+            const b = day[slotKey];
+            if (
+                b.email === record.email ||
+                b.whatsapp === record.whatsapp
+            ) {
+                return { ok: false, reason: "duplicate_person_same_day" };
             }
         }
 

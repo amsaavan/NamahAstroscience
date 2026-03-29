@@ -1,45 +1,18 @@
 {
-  "2026-03-26": {
-    "10:00": {
-      "fullName": "Saavan Asodaria",
+  "2026-03-30": {
+    "Standard-1774784610411": {
+      "fullName": "Saavan",
       "email": "savanasondariya@gmail.com",
       "whatsapp": "+91 9999999999",
       "notes": "",
-      "date": "2026-03-26",
-      "slot": "10:00",
-      "createdAt": "2026-03-19T18:21:22.032Z",
+      "date": "2026-03-30",
+      "slot": "Standard-1774784610411",
+      "createdAt": "2026-03-29T11:43:30.411Z",
       "feesPaid": false,
-      "birthDate": "2026-03-12",
+      "birthDate": "2026-03-29",
       "birthTime": "11:24",
-      "birthPlace": "talala, gujarat, india"
-    },
-    "11:00": {
-      "fullName": "Saavan Asodaria",
-      "email": "cmajineshshah@gmail.com",
-      "whatsapp": "+91 9999999999",
-      "notes": "",
-      "date": "2026-03-26",
-      "slot": "11:00",
-      "createdAt": "2026-03-19T18:25:05.181Z",
-      "feesPaid": false,
-      "birthDate": "2026-03-12",
-      "birthTime": "11:24",
-      "birthPlace": "talala, gujarat, india"
-    }
-  },
-  "2026-03-22": {
-    "09:00": {
-      "fullName": "Saavan Asodaria",
-      "email": "savanasondariya@gmail.com",
-      "whatsapp": "+91 9328411306",
-      "notes": "",
-      "date": "2026-03-22",
-      "slot": "09:00",
-      "createdAt": "2026-03-21T15:26:58.367Z",
-      "feesPaid": false,
-      "birthDate": "2003-02-04",
-      "birthTime": "11:24",
-      "birthPlace": "talala, gujarat, india"
+      "birthPlace": "talala | Gujarat | India",
+      "completed": true
     }
   }
 }

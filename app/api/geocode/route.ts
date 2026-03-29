@@ -17,13 +17,28 @@ type NominatimResult = {
 };
 
 export async function GET(request: NextRequest) {
-    const place = (request.nextUrl.searchParams.get("place") ?? "").trim();
+    const searchParams = request.nextUrl.searchParams;
+    const place = (searchParams.get("place") ?? "").trim();
+    const city = (searchParams.get("city") ?? "").trim();
+    const state = (searchParams.get("state") ?? "").trim();
+    const country = (searchParams.get("country") ?? "").trim();
 
-    if (!place) {
-        return NextResponse.json({ error: "place query param is required." }, { status: 400 });
+    if (!place && !city && !state && !country) {
+        return NextResponse.json({ error: "place, city, state, or country query param is required." }, { status: 400 });
     }
 
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`;
+    let url: string;
+    if (city || state || country) {
+        // Structured search for higher accuracy
+        const params = new URLSearchParams({ format: "json", limit: "1" });
+        if (city) params.append("city", city);
+        if (state) params.append("state", state);
+        if (country) params.append("country", country);
+        url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+    } else {
+        // Fallback to general search query
+        url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`;
+    }
 
     try {
         const res = await fetch(url, {
