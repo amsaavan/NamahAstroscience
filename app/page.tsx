@@ -792,11 +792,11 @@ export default function AstrologerWebsite() {
                   <div className="text-center sm:text-right">
                     <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--tokyo-neon)] font-bold mb-1">🇮🇳 India (IST)</p>
                     <p className="text-[15px] text-white/90 leading-relaxed font-body">Mon – Fri: <span className="font-bold text-white">1:30 PM – 3:30 PM</span></p>
-                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Sat – Sun: <span className="font-bold text-white">4:00 PM – 8:00 PM</span></p>
+                    <p className="text-[15px] text-white/90 leading-relaxed font-body">Sat: <span className="font-bold text-white">4:00 PM – 8:00 PM</span></p>
                   </div>
                   <div className="hidden sm:block w-px h-10 bg-[var(--tokyo-line)] self-center" />
                   <div className="text-center sm:text-left">
-                    <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--tokyo-neon)] font-bold mb-1">🇨🇦 Canada (Local)</p>
+                    <p className="text-[12px] uppercase tracking-[0.15em] text-[var(--tokyo-neon)] font-bold mb-1">🇨🇦 Canada (AST)</p>
                     <p className="text-[15px] text-white/90 leading-relaxed font-body">Mon – Fri: <span className="font-bold text-white">6:00 PM – 8:00 PM</span></p>
                     <p className="text-[15px] text-white/90 leading-relaxed font-body">Sat: <span className="font-bold text-white">2:00 PM – 6:00 PM</span></p>
                   </div>
@@ -817,35 +817,37 @@ export default function AstrologerWebsite() {
         </h2>
         <p className="font-body mb-8 text-xs sm:text-sm uppercase tracking-[0.14em] text-[var(--tokyo-muted)]">Feel free to reach out on any of the below</p>
         <p className="font-display text-3xl text-[var(--tokyo-neon)] mb-6">Jinesh Shah</p>
-        <div className="mx-auto flex max-w-4xl flex-col flex-wrap justify-center gap-4 md:flex-row">
-          <div
-            className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em]"
-            style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
-          >
-            <Phone className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />
-            <a
-              href="tel:+19025782770"
-              style={{ color: "#f4c430", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600 }}
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-center gap-4 w-full">
+            <div
+              className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em] w-full md:w-auto"
+              style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
             >
-              +1 902-578-2770
-            </a>
+              <Phone className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />
+              <a
+                href="tel:+19025782770"
+                style={{ color: "#f4c430", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600 }}
+              >
+                +1 902-578-2770
+              </a>
+            </div>
+            <div
+              className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em] w-full md:w-auto"
+              style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
+            >
+              <MessageCircle className="h-5 w-5 shrink-0" style={{ color: "#25D366" }} />
+              <a
+                href="https://wa.me/917984960585"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#25D366", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600 }}
+              >
+                +91 79849 60585
+              </a>
+            </div>
           </div>
           <div
-            className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em]"
-            style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
-          >
-            <MessageCircle className="h-5 w-5 shrink-0" style={{ color: "#25D366" }} />
-            <a
-              href="https://wa.me/917984960585"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "#25D366", textDecoration: "underline", textUnderlineOffset: "4px", fontWeight: 600 }}
-            >
-              +91 79849 60585
-            </a>
-          </div>
-          <div
-            className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em]"
+            className="font-body flex items-center justify-center gap-3 rounded-xl border px-5 py-4 text-sm uppercase tracking-[0.1em] w-full md:w-auto"
             style={{ borderColor: "#f4c430", backgroundColor: "#111a2e", color: "#f8fafc" }}
           >
             <Mail className="h-5 w-5 shrink-0" style={{ color: "#f4c430" }} />

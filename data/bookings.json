@@ -1,18 +1,20 @@
 {
   "2026-03-30": {
-    "Standard-1774784610411": {
-      "fullName": "Saavan",
+    "Standard-1774808459676": {
+      "fullName": "Saavan Asodaria",
       "email": "savanasondariya@gmail.com",
       "whatsapp": "+91 9999999999",
       "notes": "",
       "date": "2026-03-30",
-      "slot": "Standard-1774784610411",
-      "createdAt": "2026-03-29T11:43:30.411Z",
+      "slot": "Standard-1774808459676",
+      "createdAt": "2026-03-29T18:20:59.676Z",
       "feesPaid": false,
-      "birthDate": "2026-03-29",
-      "birthTime": "11:24",
-      "birthPlace": "talala | Gujarat | India",
-      "completed": true
+      "birthDate": "",
+      "birthTime": "",
+      "birthPlace": "",
+      "completed": true,
+      "billedAmount": "500",
+      "currency": "$"
     }
   }
 }

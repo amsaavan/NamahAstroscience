@@ -23,6 +23,8 @@ type BookingRecord = {
   birthDate?: string;
   birthTime?: string;
   birthPlace?: string;
+  billedAmount?: string;
+  currency?: string;
 };
 
 type BookingsResponse = {
@@ -1511,6 +1513,144 @@ function KundaliModal({
   );
 }
 
+// ─── Invoice Modal ────────────────────────────────────────────────────────────
+
+function InvoiceModal({
+  booking,
+  onClose,
+  onInvoiceSent,
+}: {
+  booking: BookingRecord;
+  onClose: () => void;
+  onInvoiceSent: (updatedBooking: BookingRecord) => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("₹");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  const currencies = [
+    { symbol: "₹", label: "INR (₹)" },
+    { symbol: "$", label: "USD ($)" },
+    { symbol: "€", label: "EUR (€)" },
+    { symbol: "£", label: "GBP (£)" },
+    { symbol: "AED", label: "AED" },
+    { symbol: "C$", label: "CAD (C$)" },
+    { symbol: "A$", label: "AUD (A$)" },
+    { symbol: "NZ$", label: "NZD (NZ$)" },
+    { symbol: "CHF", label: "CHF" },
+  ];
+
+  const handleSend = async () => {
+    if (!amount.trim()) {
+      setError("Please enter a billed amount.");
+      return;
+    }
+    setSending(true);
+    setError("");
+    try {
+      // 1. Update the booking status to completed and record the amount
+      const updateRes = await fetch("/api/bookings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: booking.date,
+          slot: booking.slot,
+          completed: true,
+          billedAmount: amount,
+          currency: currency,
+        }),
+      });
+
+      if (!updateRes.ok) {
+        throw new Error("Failed to update booking status.");
+      }
+
+      // 2. Trigger the invoice email
+      const emailRes = await fetch("/api/bookings/invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: booking.date,
+          slot: booking.slot,
+          type: "invoice",
+          amount: amount,
+          currency: currency,
+        }),
+      });
+
+      if (!emailRes.ok) {
+        throw new Error("Failed to send invoice email.");
+      }
+
+      onInvoiceSent({ ...booking, completed: true, billedAmount: amount, currency: currency });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl border border-[#1e2a45] bg-[#0d1526] p-8 shadow-2xl">
+        <h3 className="text-xl font-bold text-[#f4c430] mb-2">Invoicing - {booking.fullName}</h3>
+        <p className="text-sm text-[#9ca3af] mb-6">Enter the total consultation fees to send an official invoice email to the client.</p>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-1">
+              <label className="block text-xs uppercase tracking-wider text-[#e2c97e] mb-1.5 font-semibold">Currency</label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full rounded-xl border border-[#1e2a45] bg-[#0a1020] px-3 py-3 text-sm font-bold text-[#f4c430] outline-none focus:border-[#f4c430]/50 appearance-none"
+              >
+                {currencies.map(c => <option key={c.symbol} value={c.symbol}>{c.label}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs uppercase tracking-wider text-[#e2c97e] mb-1.5 font-semibold">Billed Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#f4c430] font-bold">{currency}</span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  autoFocus
+                  className={`w-full rounded-xl border border-[#1e2a45] bg-[#0a1020] ${currency.length > 1 ? 'pl-12' : 'pl-8'} pr-4 py-3 text-lg font-bold text-[#f4c430] outline-none focus:border-[#f4c430]/50`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-red-400 bg-red-400/10 p-2 rounded border border-red-400/20">{error}</p>}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-[#1e2a45] py-3 text-sm font-semibold text-[#9ca3af] hover:bg-white/5 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={handleSend}
+              className="flex-2 rounded-xl bg-[#f4c430] py-3 px-8 text-sm font-bold text-[#0d1526] hover:bg-[#e2b420] transition disabled:opacity-50"
+            >
+              {sending ? "Sending..." : "🚀 Send Invoice"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin Bookings Page ─────────────────────────────────────────────────────
 
 export default function AdminBookingsPage() {
@@ -1525,6 +1665,10 @@ export default function AdminBookingsPage() {
   const [kundaliBooking, setKundaliBooking] = useState<BookingRecord | null>(
     null,
   );
+  const [invoiceBooking, setInvoiceBooking] = useState<BookingRecord | null>(
+    null,
+  );
+  const [remindingKey, setRemindingKey] = useState("");
 
   const endpoint = useMemo(() => {
     if (!selectedDate) return "/api/bookings";
@@ -1709,7 +1853,9 @@ export default function AdminBookingsPage() {
                         ? "..."
                         : booking.feesPaid
                           ? "✓ Paid"
-                          : "Unpaid"}
+                          : booking.billedAmount 
+                            ? `${booking.currency || "₹"} ${booking.billedAmount} • Unpaid`
+                            : "Unpaid"}
                     </button>
                   </td>
                   <td className="px-4 py-3 align-middle">
@@ -1732,9 +1878,13 @@ export default function AdminBookingsPage() {
                         type="button"
                         disabled={cancellingKey === rowKey + "-done"}
                         onClick={async () => {
-                          const actionLabel = isCompletedSection
-                            ? "Restore"
-                            : "Mark Done";
+                          if (!isCompletedSection) {
+                            // If marking as done, open the invoice modal
+                            setInvoiceBooking(booking);
+                            return;
+                          }
+
+                          const actionLabel = "Restore";
                           setError("");
                           setCancellingKey(rowKey + "-done");
                           try {
@@ -1744,7 +1894,7 @@ export default function AdminBookingsPage() {
                               body: JSON.stringify({
                                 date: booking.date,
                                 slot: booking.slot,
-                                completed: !booking.completed,
+                                completed: false,
                               }),
                             });
                             const d = (await r.json()) as BookingsResponse;
@@ -1756,7 +1906,7 @@ export default function AdminBookingsPage() {
                               prev.map((item) =>
                                 item.date === booking.date &&
                                 item.slot === booking.slot
-                                  ? { ...item, completed: !booking.completed }
+                                  ? { ...item, completed: false }
                                   : item,
                               ),
                             );
@@ -1815,6 +1965,43 @@ export default function AdminBookingsPage() {
                           {cancellingKey === rowKey ? "..." : "Cancel"}
                         </button>
                       )}
+                      
+                      {isCompletedSection && !booking.feesPaid && (
+                        <button
+                          type="button"
+                          disabled={remindingKey === rowKey}
+                          onClick={async () => {
+                            setError("");
+                            setRemindingKey(rowKey);
+                            try {
+                              const r = await fetch("/api/bookings/invoice", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  date: booking.date,
+                                  slot: booking.slot,
+                                  type: "reminder",
+                                  amount: booking.billedAmount || "0",
+                                  currency: booking.currency || "₹",
+                                }),
+                              });
+                              if (!r.ok) {
+                                setError("Failed to send reminder.");
+                                return;
+                              }
+                              alert(`Reminder sent to ${booking.fullName}`);
+                            } catch {
+                              setError("Failed to send reminder.");
+                            } finally {
+                              setRemindingKey("");
+                            }
+                          }}
+                          className="flex min-w-[32px] items-center justify-center rounded-md bg-[#efe4d6] px-2 py-1.5 text-xs text-[#7a1c1c] ring-1 ring-[#7a1c1c]/30 transition hover:-translate-y-0.5 hover:bg-[#e8dac7] disabled:opacity-70"
+                          title="Send Payment Reminder"
+                        >
+                          {remindingKey === rowKey ? "..." : "🔔"}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1836,6 +2023,16 @@ export default function AdminBookingsPage() {
           onUpdate={(updated) => {
             setBookings(prev => prev.map(b => (b.date === updated.date && b.slot === updated.slot) ? updated : b));
             setKundaliBooking(updated);
+          }}
+        />
+      )}
+
+      {invoiceBooking && (
+        <InvoiceModal
+          booking={invoiceBooking}
+          onClose={() => setInvoiceBooking(null)}
+          onInvoiceSent={(updated) => {
+            setBookings(prev => prev.map(b => (b.date === updated.date && b.slot === updated.slot) ? updated : b));
           }}
         />
       )}

@@ -16,6 +16,8 @@ export type BookingRecord = {
   birthTime?: string;  // HH:MM
   birthPlace?: string; // City / Town
   completed?: boolean;
+  billedAmount?: string;
+  currency?: string;
 };
 
 export type BookingsByDate = Record<string, Record<string, BookingRecord>>;

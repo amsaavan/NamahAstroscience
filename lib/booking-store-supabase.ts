@@ -66,11 +66,14 @@ export async function updateFeesPaid(date: string, slot: string, feesPaid: boole
     return { ok: true };
 }
 
-export async function updateBookingCompleted(date: string, slot: string, completed: boolean): Promise<{ ok: boolean }> {
+export async function updateBookingCompleted(date: string, slot: string, completed: boolean, billedAmount?: string, currency?: string): Promise<{ ok: boolean }> {
     const { data: existing } = await supabase
         .from("bookings").select("slot").eq("date", date).eq("slot", slot).maybeSingle();
     if (!existing) return { ok: false };
-    const { error } = await supabase.from("bookings").update({ completed }).eq("date", date).eq("slot", slot);
+    const update: any = { completed };
+    if (billedAmount !== undefined) update.billed_amount = billedAmount;
+    if (currency !== undefined) update.currency = currency;
+    const { error } = await supabase.from("bookings").update(update).eq("date", date).eq("slot", slot);
     if (error) throw new Error(error.message);
     return { ok: true };
 }
@@ -91,6 +94,8 @@ function rowToRecord(row: Record<string, unknown>): BookingRecord {
         whatsapp: row.whatsapp as string, notes: (row.notes as string) ?? "",
         createdAt: row.created_at as string, feesPaid: (row.fees_paid as boolean) ?? false,
         completed: (row.completed as boolean) ?? false,
+        billedAmount: (row.billed_amount as string) ?? "",
+        currency: (row.currency as string) ?? "₹",
         birthDate: (row.birth_date as string) ?? "",
         birthTime: (row.birth_time as string) ?? "",
         birthPlace: (row.birth_place as string) ?? "",

@@ -167,7 +167,17 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const body = (await request.json()) as { date?: string; slot?: string; feesPaid?: boolean; completed?: boolean; birthDate?: string; birthTime?: string; birthPlace?: string };
+  const body = (await request.json()) as { 
+    date?: string; 
+    slot?: string; 
+    feesPaid?: boolean; 
+    completed?: boolean; 
+    billedAmount?: string;
+    currency?: string;
+    birthDate?: string; 
+    birthTime?: string; 
+    birthPlace?: string 
+  };
   const date = (body.date ?? "").trim();
   const slot = (body.slot ?? "").trim();
 
@@ -200,7 +210,7 @@ export async function PATCH(request: NextRequest) {
     if (typeof body.completed !== "boolean") {
       return NextResponse.json({ error: "completed must be a boolean." }, { status: 400 });
     }
-    const result = await updateBookingCompleted(date, slot, body.completed);
+    const result = await updateBookingCompleted(date, slot, body.completed, body.billedAmount, body.currency);
     if (!result.ok) {
       return NextResponse.json(
         { error: "Booking not found for selected date and slot." },

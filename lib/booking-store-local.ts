@@ -98,12 +98,15 @@ export async function updateFeesPaid(date: string, slot: string, feesPaid: boole
     return next;
 }
 
-export async function updateBookingCompleted(date: string, slot: string, completed: boolean) {
+export async function updateBookingCompleted(date: string, slot: string, completed: boolean, billedAmount?: string, currency?: string) {
     const run = async () => {
         const store = await readStore();
         const day = store[date] ?? {};
         if (!day[slot]) return { ok: false as const };
-        store[date] = { ...day, [slot]: { ...day[slot], completed } };
+        const update: Partial<BookingRecord> = { completed };
+        if (billedAmount !== undefined) update.billedAmount = billedAmount;
+        if (currency !== undefined) update.currency = currency;
+        store[date] = { ...day, [slot]: { ...day[slot], ...update } };
         await writeStore(store);
         return { ok: true as const };
     };

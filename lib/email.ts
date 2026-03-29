@@ -112,7 +112,7 @@ export async function sendBookingConfirmation(
                 <td style="padding:20px 28px;">
                   <p style="margin:0 0 6px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Contact</p>
                   <p style="margin:0;font-size:14px;color:#e2e8f0;">📱 WhatsApp: <a href="https://wa.me/917984960585" style="color:#25D366;">+91 79849 60585</a></p>
-                  <p style="margin:4px 0 0;font-size:14px;color:#e2e8f0;">📧 Email: <a href="mailto:info@contact.namahastroscience.com" style="color:#f4c430;">info@contact.namahastroscience.com</a></p>
+                  <p style="margin:4px 0 0;font-size:14px;color:#e2e8f0;">📧 Email: <a href="mailto:namahastroscience@gmail.com" style="color:#f4c430;">namahastroscience@gmail.com</a></p>
                 </td>
               </tr>
             </table>
@@ -145,7 +145,7 @@ export async function sendBookingConfirmation(
     "",
     "Jinesh will reach out on WhatsApp to confirm.",
     "WhatsApp: +91 79849 60585",
-    "Email: info@contact.namahastroscience.com",
+    "Email: namahastroscience@gmail.com",
     "",
     "Thank you,",
     "Namah Astroscience",
@@ -360,5 +360,162 @@ export async function sendAdminOtp(otp: string): Promise<SendOutcome> {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[email] sendAdminOtp failed:", message);
     return { sent: false, reason: message };
+  }
+}
+
+// ─── Invoice & Payment Reminder Emails ───────────────────────────────────────
+
+export async function sendInvoiceEmail(
+  booking: BookingRecord,
+  amount: string,
+  currency: string = "₹"
+): Promise<SendOutcome> {
+  if (!hasSmtpConfig()) return { sent: false, reason: "smtp_not_configured" };
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#060B1A;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060B1A;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0d1526;border-radius:16px;border:1px solid #1e2a45;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#7A0000,#4a0000);padding:36px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:13px;letter-spacing:4px;color:#f4c430;text-transform:uppercase;">॥ Shree Ganeshay Namah ॥</p>
+            <h1 style="margin:0;font-size:28px;font-weight:700;color:#f4c430;letter-spacing:2px;">Namah Astroscience</h1>
+            <p style="margin:8px 0 0;font-size:12px;color:#e2c97e;letter-spacing:3px;text-transform:uppercase;">Invoice for Consultation</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;">
+            <h2 style="margin:0 0 12px;font-size:20px;color:#f4c430;">Consultation Completed ✦</h2>
+            <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;line-height:1.6;">
+              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, thank you for your consultation on ${booking.date}. 
+              Please find the billing details for your session below.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#111a2e;border-radius:12px;border:1px solid #1e2a45;margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px 28px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:10px 0;border-bottom:1px solid #1e2a45;">
+                        <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Service</span><br>
+                        <span style="font-size:16px;color:#f4c430;">Vedic Astrology Consultation</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:15px 0;">
+                        <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Amount Due</span><br>
+                        <span style="font-size:28px;color:#f4c430;font-weight:800;">${currency} ${amount}</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <div style="background:rgba(244,196,48,0.05);border-radius:12px;padding:24px;border:1px dashed #f4c430;margin-bottom:32px;">
+              <p style="margin:0 0 12px;font-size:14px;color:#e2e8f0;font-weight:600;">Payment Instructions:</p>
+              <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+                Please complete the payment via UPI or Bank Transfer. You can scan the QR code shared on WhatsApp or use our registered mobile number: 
+                <strong style="color:#25D366;">+91 79849 60585</strong>.
+              </p>
+            </div>
+
+            <p style="font-size:13px;color:#6b7280;text-align:center;margin:0;">
+              Once paid, kindly share a screenshot on WhatsApp for our records.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#070b1a;padding:20px 40px;text-align:center;border-top:1px solid #1e2a45;">
+            <p style="margin:0;font-size:11px;color:#4b5563;letter-spacing:2px;text-transform:uppercase;">© 2026 Namah Astroscience · Vedic Guidance Studio</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: booking.email,
+      subject: `Invoice for your consultation — Namah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nYour consultation on ${booking.date} is completed. Amount due: ${currency} ${amount}.\nPlease complete the payment via WhatsApp: +91 79849 60585.\n\nThank you,\nNamah Astroscience`,
+      html,
+    });
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, reason: String(err) };
+  }
+}
+
+export async function sendPaymentReminderEmail(
+  booking: BookingRecord,
+  amount: string,
+  currency: string = "₹"
+): Promise<SendOutcome> {
+  if (!hasSmtpConfig()) return { sent: false, reason: "smtp_not_configured" };
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#060B1A;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060B1A;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#0d1526;border-radius:16px;border:1px solid #1e2a45;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#7A0000,#4a0000);padding:30px 40px;text-align:center;">
+             <h1 style="margin:0;font-size:24px;font-weight:700;color:#f4c430;letter-spacing:2px;">Payment Reminder</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:40px;">
+            <p style="margin:0 0 24px;font-size:15px;color:#9ca3af;line-height:1.6;">
+              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, this is a friendly reminder regarding the pending payment for your consultation held on ${booking.date}.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#111a2e;border-radius:12px;border:1px solid #1e2a45;margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px 28px;">
+                  <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Outstanding Balance</span><br>
+                  <span style="font-size:28px;color:#f4c430;font-weight:800;">${currency} ${amount}</span>
+                </td>
+              </tr>
+            </table>
+
+            <p style="font-size:14px;color:#9ca3af;line-height:1.7;margin:0 0 24px;">
+              If you have already made the payment, please disregard this email. Otherwise, kindly complete the transaction at your earliest convenience.
+            </p>
+
+            <p style="margin:0;font-size:14px;color:#e2e8f0;text-align:center;">
+              📱 WhatsApp support: <a href="https://wa.me/917984960585" style="color:#25D366;">+91 79849 60585</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: booking.email,
+      subject: `Friendly Payment Reminder — Namah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nThis is a friendly reminder for the pending payment of ${currency} ${amount} for your session on ${booking.date}.\n\nWhatsApp: +91 79849 60585.\n\nThank you,\nNamah Astroscience`,
+      html,
+    });
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, reason: String(err) };
   }
 }
