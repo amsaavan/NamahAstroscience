@@ -154,7 +154,7 @@ body {
 /* Fix visibility of browser pickers (calendar/clock) on dark inputs */
 input[type="date"],
 input[type="time"] {
-  color-scheme: dark !important;
+  color-scheme: white !important;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
@@ -182,17 +182,20 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 
   /* Reset layout for natural flow across pages */
-  html, body {
+  html,
+  body {
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
-    background: #050713 !important; /* Force the outer background */
+    background: #050713 !important;
+    /* Force the outer background */
     color: #f9fafb !important;
   }
 
   /* Transform the fixed modal into a standard printable document */
   .print-container {
-    position: static !important; /* Use static to ensure it roots in the page flow */
+    position: static !important;
+    /* Use static to ensure it roots in the page flow */
     display: block !important;
     height: auto !important;
     overflow: visible !important;
@@ -200,7 +203,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     z-index: auto !important;
     padding: 0 !important;
     margin: 0 !important;
-    backdrop-filter: none !important; /* Blurs often break print preview */
+    backdrop-filter: none !important;
+    /* Blurs often break print preview */
     filter: none !important;
     width: 100% !important;
   }
@@ -213,8 +217,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: #0d1526 !important; /* Re-force the modal color */
-    color: #f9fafb !important; /* Force white text */
+    background: #0d1526 !important;
+    /* Re-force the modal color */
+    color: #f9fafb !important;
+    /* Force white text */
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -222,7 +228,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 
   /* Ensure tables and charts are forced to be dark */
-  table, thead, tbody, tr, td, th {
+  table,
+  thead,
+  tbody,
+  tr,
+  td,
+  th {
     background: inherit !important;
     color: inherit !important;
     border-color: #1e2a45 !important;
@@ -239,7 +250,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 
   /* Ensure charts and tables don't break awkwardly mid-page */
-  table, svg {
+  table,
+  svg {
     page-break-inside: avoid;
   }
 }
