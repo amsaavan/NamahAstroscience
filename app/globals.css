@@ -152,6 +152,11 @@ body {
 }
 
 /* Fix visibility of browser pickers (calendar/clock) on dark inputs */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark !important;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1) !important;
