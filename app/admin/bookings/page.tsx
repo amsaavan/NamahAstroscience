@@ -7,6 +7,8 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import AdminInactivityGuard from "@/components/admin-inactivity-guard";
 import { moonposition } from "astronomia";
+import { LocationSearch } from "@/components/location-search";
+import { Globe } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -909,15 +911,13 @@ function KundaliModal({
   
   const [editDate, setEditDate] = useState(booking.birthDate || "");
   const [editTime, setEditTime] = useState(booking.birthTime || "");
-  const [editCity, setEditCity] = useState(parts[0] || "");
-  const [editState, setEditState] = useState(parts[1] || "");
-  const [editCountry, setEditCountry] = useState(parts[2] || "");
+  const [editPlaceName, setEditPlaceName] = useState(booking.birthPlace || "");
   
   const [editLat, setEditLat] = useState<number | undefined>(booking.birthLat);
   const [editLon, setEditLon] = useState<number | undefined>(booking.birthLon);
   const [editTimezone, setEditTimezone] = useState<string | undefined>(booking.birthTimezone);
   
-  const editPlace = [editCity, editState, editCountry].filter(Boolean).join(" | ");
+  const editPlace = editPlaceName;
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
 
@@ -934,55 +934,7 @@ function KundaliModal({
     editLat !== booking.birthLat ||
     editLon !== booking.birthLon;
 
-  // Geocode whenever birth details change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (editCity) params.append("city", editCity);
-    if (editState) params.append("state", editState);
-    if (editCountry) params.append("country", editCountry);
-    // If no structured parts, try the whole string as fallback
-    if (!editCity && !editState && !editCountry && editPlace) params.append("place", editPlace);
-    
-    if (params.toString() === "") { setGeo(null); return; }
-
-    let cancelled = false;
-    setGeoLoading(true);
-    setGeoError("");
-    fetch(`/api/geocode?${params.toString()}`)
-      .then((r) => r.json())
-      .then(
-        (data: {
-          lat?: number;
-          lon?: number;
-          displayName?: string;
-          error?: string;
-        }) => {
-          if (cancelled) return;
-          if (data.error || data.lat == null)
-            setGeoError(data.error ?? "Could not resolve coordinates.");
-          else
-            setGeo({
-              lat: data.lat!,
-              lon: data.lon!,
-              displayName: data.displayName!,
-            });
-            // Auto-update local edit state if coordinates were missing
-            if (editLat === undefined || editLon === undefined) {
-              setEditLat(data.lat);
-              setEditLon(data.lon);
-            }
-          }
-      )
-      .catch(() => {
-        if (!cancelled) setGeoError("Geocoding request failed.");
-      })
-      .finally(() => {
-        if (!cancelled) setGeoLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [editPlace]);
+  // Geocode whenever birth details change (Removed as LocationSearch handles this now)
 
   const chart = useMemo(
     () =>
@@ -1112,34 +1064,17 @@ function KundaliModal({
               className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50"
             />
           </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-white">City</p>
-            <input
-              type="text"
-              placeholder="e.g. Talala"
-              value={editCity}
-              onChange={(e) => { setEditCity(e.target.value); setSaveMsg(""); }}
-              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-white">State</p>
-            <input
-              type="text"
-              placeholder="e.g. Gujarat"
-              value={editState}
-              onChange={(e) => { setEditState(e.target.value); setSaveMsg(""); }}
-              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-[2px] text-white">Country</p>
-            <input
-              type="text"
-              placeholder="e.g. India"
-              value={editCountry}
-              onChange={(e) => { setEditCountry(e.target.value); setSaveMsg(""); }}
-              className="w-full rounded-md border border-[#1e2a45] bg-[#0a1020] px-2 py-1.5 text-sm font-semibold text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 placeholder:text-[#4b5563]"
+          <div className="space-y-1 md:col-span-1">
+            <p className="text-[10px] uppercase tracking-[2px] text-white">Birth Place</p>
+            <LocationSearch 
+              initialValue={initialPlace}
+              placeholder="Search birth location..."
+              onSelect={(loc) => {
+                setEditPlaceName(loc.name);
+                setEditLat(loc.lat);
+                setEditLon(loc.lon);
+                setEditTimezone(loc.timezone);
+              }}
             />
           </div>
         </div>
