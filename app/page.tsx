@@ -8,7 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2, Globe } from "lucide-react";
+import { LocationSearch } from "@/components/location-search";
 
 const DAILY_SLOTS = (() => {
   const slots: string[] = [];
@@ -330,6 +331,10 @@ export default function AstrologerWebsite() {
   const [birthCity, setBirthCity] = useState("");
   const [birthState, setBirthState] = useState("");
   const [birthCountry, setBirthCountry] = useState("");
+  
+  const [birthLat, setBirthLat] = useState<number>();
+  const [birthLon, setBirthLon] = useState<number>();
+  const [birthTimezone, setBirthTimezone] = useState<string>();
 
   const today = useMemo(() => {
     const now = new Date();
@@ -659,33 +664,24 @@ export default function AstrologerWebsite() {
                     />
                   </div>
                 </div>
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1">
                   <div className="space-y-1">
-                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">City</label>
-                    <Input
-                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
-                      placeholder="e.g. Talala"
-                      value={birthCity}
-                      onChange={(e) => setBirthCity(e.target.value)}
+                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">Birth Place (Search for City/Town)</label>
+                    <LocationSearch 
+                      placeholder="e.g. Talala, Gujarat"
+                      onSelect={(loc) => {
+                        // Extract parts if possible or just use the display name
+                        setBirthCity(loc.name);
+                        setBirthLat(loc.lat);
+                        setBirthLon(loc.lon);
+                        setBirthTimezone(loc.timezone);
+                      }}
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">State</label>
-                    <Input
-                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
-                      placeholder="e.g. Gujarat"
-                      value={birthState}
-                      onChange={(e) => setBirthState(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-body block text-xs uppercase tracking-[0.14em] text-white/90">Country</label>
-                    <Input
-                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/40"
-                      placeholder="e.g. India"
-                      value={birthCountry}
-                      onChange={(e) => setBirthCountry(e.target.value)}
-                    />
+                    {birthLat && birthLon && (
+                      <p className="font-body text-[10px] text-[var(--tokyo-neon)] uppercase tracking-wider mt-1 flex items-center gap-1">
+                         <Globe className="h-3 w-3" /> Coordinates Captured: {birthLat.toFixed(4)}, {birthLon.toFixed(4)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -745,7 +741,10 @@ export default function AstrologerWebsite() {
 
                         birthDate: birthDate || undefined,
                         birthTime: birthTime || undefined,
-                        birthPlace: [birthCity, birthState, birthCountry].filter(Boolean).join(" | "),
+                        birthPlace: birthCity,
+                        birthLat: birthLat,
+                        birthLon: birthLon,
+                        birthTimezone: birthTimezone,
                       }),
                     });
 

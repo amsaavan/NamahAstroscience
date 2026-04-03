@@ -59,11 +59,11 @@ export async function updateBookingCompleted(date: string, slot: string, complet
   return updateBookingCompleted(date, slot, completed, billedAmount, currency);
 }
 
-export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string) {
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string, lat?: number, lon?: number, timezone?: string) {
   if (isVercel) {
     const { updateBirthDetails } = await import("@/lib/booking-store-supabase");
-    return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace);
+    return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace, lat, lon, timezone);
   }
   const { updateBirthDetails } = await import("@/lib/booking-store-local");
-  return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace);
+  return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace, lat, lon, timezone);
 }

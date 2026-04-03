@@ -23,6 +23,9 @@ type BookingRecord = {
   birthDate?: string;
   birthTime?: string;
   birthPlace?: string;
+  birthLat?: number;
+  birthLon?: number;
+  birthTimezone?: string;
   billedAmount?: string;
   currency?: string;
 };
@@ -910,20 +913,26 @@ function KundaliModal({
   const [editState, setEditState] = useState(parts[1] || "");
   const [editCountry, setEditCountry] = useState(parts[2] || "");
   
+  const [editLat, setEditLat] = useState<number | undefined>(booking.birthLat);
+  const [editLon, setEditLon] = useState<number | undefined>(booking.birthLon);
+  const [editTimezone, setEditTimezone] = useState<string | undefined>(booking.birthTimezone);
+  
   const editPlace = [editCity, editState, editCountry].filter(Boolean).join(" | ");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
 
   // Default coordinates fallback
-  const currentLat = geo?.lat ?? 23.0;
-  const currentLon = geo?.lon ?? 72.0;
+  const currentLat = editLat ?? 23.0;
+  const currentLon = editLon ?? 72.0;
 
 
   // Track if anything changed
   const hasChanges =
     editDate !== (booking.birthDate || "") ||
     editTime !== (booking.birthTime || "") ||
-    editPlace !== (booking.birthPlace || "");
+    editPlace !== (booking.birthPlace || "") ||
+    editLat !== booking.birthLat ||
+    editLon !== booking.birthLon;
 
   // Geocode whenever birth details change
   useEffect(() => {
@@ -957,7 +966,12 @@ function KundaliModal({
               lon: data.lon!,
               displayName: data.displayName!,
             });
-        },
+            // Auto-update local edit state if coordinates were missing
+            if (editLat === undefined || editLon === undefined) {
+              setEditLat(data.lat);
+              setEditLon(data.lon);
+            }
+          }
       )
       .catch(() => {
         if (!cancelled) setGeoError("Geocoding request failed.");
@@ -1146,9 +1160,12 @@ function KundaliModal({
                       body: JSON.stringify({
                         date: booking.date,
                         slot: booking.slot,
-                        birthDate: editDate,
+                         birthDate: editDate,
                         birthTime: editTime,
                         birthPlace: editPlace,
+                        birthLat: editLat,
+                        birthLon: editLon,
+                        birthTimezone: editTimezone,
                       }),
                     });
                     if (!r.ok) {
@@ -1156,9 +1173,12 @@ function KundaliModal({
                     } else {
                       const updated = {
                         ...booking,
-                        birthDate: editDate,
+                         birthDate: editDate,
                         birthTime: editTime,
                         birthPlace: editPlace,
+                        birthLat: editLat,
+                        birthLon: editLon,
+                        birthTimezone: editTimezone,
                       };
                       onUpdate(updated);
                       setSaveMsg("✓ Saved");
@@ -1182,38 +1202,56 @@ function KundaliModal({
           </div>
         )}
 
-        {/* Geo status */}
-        {editPlace && (
-          <div className="px-8 py-2 border-b border-[#1e2a45] flex items-center gap-2 text-xs">
-            {geoLoading ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-[#f4c430] animate-pulse inline-block" />
-                <span className="text-white">Resolving coordinates…</span>
-              </>
-            ) : geo ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                <span className="text-green-400 font-medium">
-                  📍 {geo.lat.toFixed(4)}°N, {geo.lon.toFixed(4)}°E
+         {/* Geo status */}
+        <div className="px-8 py-2 border-b border-[#1e2a45] flex flex-wrap items-center gap-4 text-xs">
+          {geoLoading ? (
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#f4c430] animate-pulse inline-block" />
+              <span className="text-white">Resolving location…</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 w-full">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full inline-block ${editLat && editLon ? "bg-green-500" : "bg-amber-500"}`} />
+                <span className={`${editLat && editLon ? "text-green-400" : "text-amber-400"} font-medium`}>
+                  📍 {editLat?.toFixed(4) ?? "23.0000"}°N, {editLon?.toFixed(4) ?? "72.0000"}°E
                 </span>
-                <span
-                  className="text-white truncate max-w-xs"
-                  title={geo.displayName}
+              </div>
+              
+              <div className="flex items-center gap-2 ml-auto print-hide">
+                 <button 
+                  onClick={() => {
+                    const newLat = prompt("Override Latitude:", editLat?.toString() || "23.0");
+                    if (newLat) setEditLat(parseFloat(newLat));
+                  }}
+                  className="text-[10px] text-white/40 hover:text-[#f4c430]"
                 >
-                  — {geo.displayName}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="h-2 w-2 rounded-full bg-amber-500 inline-block" />
-                <span className="text-amber-400">
-                  ⚠ Using default coords (23°N, 72°E)
-                  {geoError ? `: ${geoError}` : ""}
-                </span>
-              </>
-            )}
-          </div>
-        )}
+                  Edit Lat
+                 </button>
+                 <button 
+                  onClick={() => {
+                    const newLon = prompt("Override Longitude:", editLon?.toString() || "72.0");
+                    if (newLon) setEditLon(parseFloat(newLon));
+                  }}
+                  className="text-[10px] text-white/40 hover:text-[#f4c430]"
+                >
+                  Edit Lon
+                 </button>
+                 {geo && (
+                   <button 
+                    onClick={() => {
+                      setEditLat(geo.lat);
+                      setEditLon(geo.lon);
+                    }}
+                    className="text-[10px] text-[#f4c430] hover:underline"
+                   >
+                     Use Resolved ({geo.lat.toFixed(2)}, {geo.lon.toFixed(2)})
+                   </button>
+                 )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Ascendant + current dasha banner */}
         <div className="px-8 py-2.5 border-b border-[#1e2a45] flex flex-wrap items-center gap-4 text-xs">

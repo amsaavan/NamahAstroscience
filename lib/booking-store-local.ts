@@ -115,12 +115,24 @@ export async function updateBookingCompleted(date: string, slot: string, complet
     return next;
 }
 
-export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string) {
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string, birthLat?: number, birthLon?: number, birthTimezone?: string) {
     const run = async () => {
         const store = await readStore();
         const day = store[date] ?? {};
         if (!day[slot]) return { ok: false as const };
-        store[date] = { ...day, [slot]: { ...day[slot], birthDate, birthTime, birthPlace } };
+        const record = day[slot];
+        store[date] = { 
+            ...day, 
+            [slot]: { 
+                ...record, 
+                birthDate, 
+                birthTime, 
+                birthPlace, 
+                birthLat: birthLat ?? record.birthLat,
+                birthLon: birthLon ?? record.birthLon,
+                birthTimezone: birthTimezone ?? record.birthTimezone
+            } 
+        };
         await writeStore(store);
         return { ok: true as const };
     };

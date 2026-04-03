@@ -23,6 +23,9 @@ type BookingPayload = {
   birthDate?: string;
   birthTime?: string;
   birthPlace?: string;
+  birthLat?: number;
+  birthLon?: number;
+  birthTimezone?: string;
 };
 
 function normalize(payload: BookingPayload): BookingRecord {
@@ -44,6 +47,9 @@ function normalize(payload: BookingPayload): BookingRecord {
     birthDate: (payload.birthDate ?? "").trim(),
     birthTime: (payload.birthTime ?? "").trim(),
     birthPlace: (payload.birthPlace ?? "").trim(),
+    birthLat: payload.birthLat,
+    birthLon: payload.birthLon,
+    birthTimezone: payload.birthTimezone,
   };
 }
 
@@ -176,7 +182,10 @@ export async function PATCH(request: NextRequest) {
     currency?: string;
     birthDate?: string; 
     birthTime?: string; 
-    birthPlace?: string 
+    birthPlace?: string;
+    birthLat?: number;
+    birthLon?: number;
+    birthTimezone?: string;
   };
   const date = (body.date ?? "").trim();
   const slot = (body.slot ?? "").trim();
@@ -227,6 +236,9 @@ export async function PATCH(request: NextRequest) {
       (body.birthDate ?? "").trim(),
       (body.birthTime ?? "").trim(),
       (body.birthPlace ?? "").trim(),
+      body.birthLat,
+      body.birthLon,
+      body.birthTimezone
     );
     if (!result.ok) {
       return NextResponse.json(

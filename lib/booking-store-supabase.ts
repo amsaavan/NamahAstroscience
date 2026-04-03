@@ -40,6 +40,9 @@ export async function createBooking(record: BookingRecord): Promise<{ ok: boolea
         birth_date: record.birthDate ?? "",
         birth_time: record.birthTime ?? "",
         birth_place: record.birthPlace ?? "",
+        birth_lat: record.birthLat ?? null,
+        birth_lon: record.birthLon ?? null,
+        birth_timezone: record.birthTimezone ?? null,
     });
     if (error) {
         if (error.code === "23505") return { ok: false, reason: "slot_taken" };
@@ -78,11 +81,18 @@ export async function updateBookingCompleted(date: string, slot: string, complet
     return { ok: true };
 }
 
-export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string): Promise<{ ok: boolean }> {
+export async function updateBirthDetails(date: string, slot: string, birthDate: string, birthTime: string, birthPlace: string, lat?: number, lon?: number, timezone?: string): Promise<{ ok: boolean }> {
     const { data: existing } = await supabase
         .from("bookings").select("slot").eq("date", date).eq("slot", slot).maybeSingle();
     if (!existing) return { ok: false };
-    const { error } = await supabase.from("bookings").update({ birth_date: birthDate, birth_time: birthTime, birth_place: birthPlace }).eq("date", date).eq("slot", slot);
+    const { error } = await supabase.from("bookings").update({
+        birth_date: birthDate,
+        birth_time: birthTime,
+        birth_place: birthPlace,
+        birth_lat: lat ?? null,
+        birth_lon: lon ?? null,
+        birth_timezone: timezone ?? null
+    }).eq("date", date).eq("slot", slot);
     if (error) throw new Error(error.message);
     return { ok: true };
 }
@@ -99,5 +109,8 @@ function rowToRecord(row: Record<string, unknown>): BookingRecord {
         birthDate: (row.birth_date as string) ?? "",
         birthTime: (row.birth_time as string) ?? "",
         birthPlace: (row.birth_place as string) ?? "",
+        birthLat: (row.birth_lat as number) ?? undefined,
+        birthLon: (row.birth_lon as number) ?? undefined,
+        birthTimezone: (row.birth_timezone as string) ?? undefined,
     };
 }

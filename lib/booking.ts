@@ -14,7 +14,10 @@ export type BookingRecord = {
   // Birth details (optional — for Kundali)
   birthDate?: string;  // YYYY-MM-DD
   birthTime?: string;  // HH:MM
-  birthPlace?: string; // City / Town
+  birthPlace?: string; // Formatted location name
+  birthLat?: number;
+  birthLon?: number;
+  birthTimezone?: string;
   completed?: boolean;
   billedAmount?: string;
   currency?: string;
