@@ -689,6 +689,7 @@ export default function AstrologerWebsite() {
                     <Input
                       className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
                       type="date"
+                      max={today}
                       value={birthDate}
                       onChange={(e) => setBirthDate(e.target.value)}
                     />
@@ -901,7 +902,7 @@ export default function AstrologerWebsite() {
       </section>
 
       <footer className="relative z-10 font-body border-t border-[var(--tokyo-line)] bg-[var(--tokyo-bg)] py-7 text-center text-xs uppercase tracking-[0.2em] text-[#9CA3AF]">
-        (c) 2026 Namah Astroscience. All rights reserved.
+        &copy; {new Date().getFullYear()} Namah Astroscience. All rights reserved.
       </footer>
     </div>
   );
