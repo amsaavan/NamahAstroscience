@@ -4,7 +4,7 @@ export const ADMIN_SESSION_COOKIE = "admin_session";
 
 // ─── OTP Store (in-memory, single-use, 10-min expiry) ──────────────────────
 
-type OtpEntry = { otp: string; expiresAt: number; lastSentAt: number };
+type OtpEntry = { otp: string; expiresAt: number; lastSentAt: number; attempts: number };
 // Single admin slot — only one OTP active at a time
 let otpStore: OtpEntry | null = null;
 
@@ -25,18 +25,23 @@ export function nextOtpAllowedInMs(): number {
 export function generateOtp(): string {
   const otp = crypto.randomInt(100000, 999999).toString();
   const now = Date.now();
-  otpStore = { otp, expiresAt: now + OTP_TTL_MS, lastSentAt: now };
+  otpStore = { otp, expiresAt: now + OTP_TTL_MS, lastSentAt: now, attempts: 0 };
   return otp;
 }
 
 export function verifyOtp(input: string): boolean {
   if (!otpStore) return false;
-  if (Date.now() > otpStore.expiresAt) {
-    otpStore = null;
+  if (Date.now() > otpStore.expiresAt || otpStore.attempts >= 5) {
+    otpStore = null; // lockout completely if expired or too many failed attempts
     return false;
   }
+  
   const valid = input === otpStore.otp;
-  if (valid) otpStore = null; // single-use
+  if (valid) {
+    otpStore = null; // single-use
+  } else {
+    otpStore.attempts += 1;
+  }
   return valid;
 }
 
@@ -91,7 +96,14 @@ export function verifySessionJwt(token: string): boolean {
       .replace(/=/g, "")
       .replace(/\+/g, "-")
       .replace(/\//g, "_");
-    if (sig !== expected) return false;
+      
+    // Security enhancement: Prevent timing attacks
+    const sigBuffer = Buffer.from(sig);
+    const expectedBuffer = Buffer.from(expected);
+    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return false;
+    }
+    
     const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
     return decoded.exp > Math.floor(Date.now() / 1000);
   } catch {

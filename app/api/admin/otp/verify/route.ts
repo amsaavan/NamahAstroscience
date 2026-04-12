@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         name: ADMIN_SESSION_COOKIE,
         value: token,
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "strict",
         secure: process.env.NODE_ENV === "production",
         path: "/",
     });

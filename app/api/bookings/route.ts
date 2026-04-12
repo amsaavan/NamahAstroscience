@@ -6,6 +6,7 @@ import {
   sendBookingConfirmation,
 } from "@/lib/email";
 import { ADMIN_SESSION_COOKIE, verifySessionJwt } from "@/lib/admin-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 function isAdminAuthed(request: NextRequest): boolean {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";
@@ -101,6 +102,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Name, email, and WhatsApp number are required." },
       { status: 400 }
+    );
+  }
+
+  // Length constraints
+  if (booking.fullName.length > 100 || booking.email.length > 150 || booking.whatsapp.length > 50 || (booking.notes || "").length > 2000) {
+    return NextResponse.json(
+      { error: "Submitted data exceeds maximum allowed length." },
+      { status: 400 }
+    );
+  }
+  
+  if ((booking.birthPlace || "").length > 250) {
+    return NextResponse.json({ error: "Birth place exceeds maximum allowed length." }, { status: 400 });
+  }
+
+  // Rate Limiting
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  if (!rateLimit(ip, 5, 60 * 60 * 1000)) { // 5 bookings per IP per hour
+    return NextResponse.json(
+      { error: "Too many booking requests from this IP. Please try again later." },
+      { status: 429 }
     );
   }
 

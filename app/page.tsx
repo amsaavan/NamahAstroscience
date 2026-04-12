@@ -62,6 +62,44 @@ const BACKGROUND_STARS = [
   { left: "93%", top: "94%", size: "h-1 w-1", opacity: "opacity-60", delay: "2.2s" },
 ] as const;
 
+function RedStarLayer({ prefix }: { prefix: string }) {
+  return (
+    <>
+      <div className="pointer-events-none absolute -left-[10%] top-[0%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,#7A0000_0%,transparent_60%)] opacity-15 blur-[60px]" />
+      <div className="pointer-events-none absolute -right-[10%] bottom-[0%] h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,#7A0000_0%,transparent_60%)] opacity-15 blur-[80px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,var(--tokyo-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--tokyo-line)_1px,transparent_1px)] [background-size:44px_44px]" />
+      <div className="pointer-events-none absolute inset-0">
+        {BACKGROUND_STARS.map((star, idx) => (
+          <span
+            key={`${prefix}-${star.left}-${star.top}-${idx}`}
+            className={`absolute rounded-full bg-white ${star.size} ${star.opacity} animate-[twinkle_3.8s_ease-in-out_infinite]`}
+            style={{ left: star.left, top: star.top, animationDelay: star.delay }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function GoldStarLayer({ prefix }: { prefix: string }) {
+  return (
+    <>
+      <div className="pointer-events-none absolute -left-[10%] top-[0%] h-[400px] w-[400px] rounded-full bg-[radial-gradient(circle,#F4C430_0%,transparent_60%)] opacity-5 blur-[60px]" />
+      <div className="pointer-events-none absolute -right-[10%] bottom-[0%] h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,#F4C430_0%,transparent_60%)] opacity-5 blur-[80px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,var(--tokyo-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--tokyo-line)_1px,transparent_1px)] [background-size:44px_44px]" />
+      <div className="pointer-events-none absolute inset-0">
+        {BACKGROUND_STARS.map((star, idx) => (
+          <span
+            key={`${prefix}-${star.left}-${star.top}-${idx}`}
+            className={`absolute rounded-full bg-white ${star.size} ${star.opacity} animate-[twinkle_3.8s_ease-in-out_infinite]`}
+            style={{ left: star.left, top: star.top, animationDelay: star.delay }}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 type ReviewRecord = {
   id: string;
   name: string;
@@ -195,8 +233,9 @@ function ReviewsSection() {
   };
 
   return (
-    <section className="relative z-10 border-t border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16">
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+    <section className="relative z-10 border-t border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16 overflow-hidden">
+      <RedStarLayer prefix="rvw" />
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
         <h2 className="font-display text-center text-6xl text-[var(--tokyo-neon)] md:text-7xl">Reviews</h2>
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
           <p className="font-body text-center text-sm uppercase tracking-[0.14em] text-white">
@@ -367,15 +406,6 @@ export default function AstrologerWebsite() {
     <div className="relative min-h-screen overflow-x-hidden bg-[var(--tokyo-bg)] text-[var(--tokyo-text)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,#7A0000_0%,#5A0000_36%,#060B1A_78%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,var(--tokyo-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--tokyo-line)_1px,transparent_1px)] [background-size:44px_44px]" />
-      <div className="pointer-events-none absolute inset-0">
-        {BACKGROUND_STARS.map((star, idx) => (
-          <span
-            key={`${star.left}-${star.top}-${idx}`}
-            className={`absolute rounded-full bg-white ${star.size} ${star.opacity} animate-[twinkle_3.8s_ease-in-out_infinite]`}
-            style={{ left: star.left, top: star.top, animationDelay: star.delay }}
-          />
-        ))}
-      </div>
 
       <header className="relative border-b border-[var(--tokyo-line)] bg-[#070b1a]/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5">
@@ -401,13 +431,15 @@ export default function AstrologerWebsite() {
         </div>
       </header>
 
-      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-24">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="relative"
-        >
+      <section className="relative z-10 w-full overflow-hidden px-6 pb-20 pt-24">
+        <RedStarLayer prefix="hero" />
+        <div className="mx-auto max-w-6xl relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="relative"
+          >
 
           <div className="pointer-events-none absolute left-4 top-16 hidden text-3xl text-[var(--star-white)]/85 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)] md:block">
             ✧
@@ -443,15 +475,18 @@ export default function AstrologerWebsite() {
             </Button>
           </div>
         </motion.div>
+        </div>
       </section>
 
       {/* Services Section */}
-      <section className="relative z-10 border-y border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16">
-        <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
-          Services
-        </h2>
-        <p className="font-body mt-4 text-center text-xs sm:text-sm uppercase tracking-[0.14em] text-white/80">Areas of astrological guidance offered</p>
-        {(() => {
+      <section className="relative z-10 border-y border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16 overflow-hidden">
+        <GoldStarLayer prefix="srv" />
+        <div className="relative z-10">
+          <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
+            Services
+          </h2>
+          <p className="font-body mt-4 text-center text-xs sm:text-sm uppercase tracking-[0.14em] text-white/80">Areas of astrological guidance offered</p>
+          {(() => {
           const services = [
             { title: "Health Issues", desc: "Early detection through planetary insight and chart analysis." },
             { title: "Business & Job", desc: "Timing and strategy for career moves and business decisions." },
@@ -492,11 +527,13 @@ export default function AstrologerWebsite() {
             </div>
           );
         })()}
+        </div>
       </section>
 
       {/* About / Preface Section */}
-      <section className="relative z-10 px-6 py-16">
-        <div className="mx-auto max-w-4xl">
+      <section className="relative z-10 px-6 py-16 overflow-hidden">
+        <RedStarLayer prefix="abt" />
+        <div className="relative z-10 mx-auto max-w-4xl">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -538,10 +575,12 @@ export default function AstrologerWebsite() {
         </div>
       </section>
 
-      <section id="booking-section" className="relative z-10 px-6 py-20">
-        <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
-          Schedule Session
-        </h2>
+      <section id="booking-section" className="relative z-10 px-6 py-20 overflow-hidden">
+        <RedStarLayer prefix="sch" />
+        <div className="relative z-10">
+          <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
+            Schedule Session
+          </h2>
         <div className="mx-auto mt-10 max-w-3xl">
           <Card className="rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
             <CardContent className="space-y-6 p-8 md:p-10">
@@ -803,6 +842,7 @@ export default function AstrologerWebsite() {
               </div>
             </CardContent>
           </Card>
+        </div>
         </div>
       </section>
 
