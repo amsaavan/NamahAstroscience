@@ -41,7 +41,7 @@ type GeoResult = { lat: number; lon: number; displayName: string } | null;
 
 // ─── Vedic Astrology Data ───────────────────────────────────────────────────
 
-const PLANETS = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke"] as const;
+const PLANETS = ["Su", "Mo", "Ma", "Me", "Ju", "Ve", "Sa", "Ra", "Ke", "Ur", "Ne", "Pl", "Mn"] as const;
 type Planet = (typeof PLANETS)[number];
 
 const PLANET_FULL: Record<Planet, string> = {
@@ -54,6 +54,10 @@ const PLANET_FULL: Record<Planet, string> = {
   Sa: "Saturn",
   Ra: "Rahu",
   Ke: "Ketu",
+  Ur: "Uranus",
+  Ne: "Neptune",
+  Pl: "Pluto",
+  Mn: "Mandi",
 };
 
 const RASHI_NAMES = [
@@ -149,7 +153,7 @@ const NAKSHATRA_LORDS: Planet[] = [
 ];
 
 // Vimshottari Dasha years for each planet
-const DASHA_YEARS: Record<Planet, number> = {
+const DASHA_YEARS: Partial<Record<Planet, number>> = {
   Ke: 7,
   Ve: 20,
   Su: 6,
@@ -159,6 +163,7 @@ const DASHA_YEARS: Record<Planet, number> = {
   Ju: 16,
   Sa: 19,
   Me: 17,
+  // Outer planets & Mandi don't participate in Vimshottari Dasha
 };
 
 // Planets must go in Vimshottari order
@@ -182,6 +187,7 @@ const COMBUST_ORB: Partial<Record<Planet, number>> = {
   Ju: 11,
   Ve: 10,
   Sa: 15,
+  // Outer planets & Mandi are not traditionally combusted
 };
 
 // ─── Astronomical Calculations (Jean Meeus + Lahiri Ayanamsa) ───────────────
@@ -248,6 +254,12 @@ const OE: Record<
   ],
   Ju: [34.40438, 3034.9057, 14.27495, 0.1816, 0.04839266, -0.000163, 5.203363],
   Sa: [49.94432, 1222.1138, 92.86136, 0.5422, 0.0541506, -0.000244, 9.53707],
+  // Outer planets (J2000 elements, ~1° accuracy — sufficient for chart placement)
+  Ur: [313.23218, 428.4800, 172.43404, 0.09351, 0.04716771, -0.000019, 19.19126],
+  Ne: [304.88003, 218.4600, 46.68158, 0.01020, 0.00858587, 0.000005, 30.06896],
+  // Pluto J2000 elements (Astronomical Almanac; ~1–2° accuracy via Kepler)
+  // Much more reliable than an incomplete Meeus Ch.37 partial series
+  Pl: [238.958, 145.20, 224.069, 0.0, 0.24880, 0.00006465, 39.482],
 };
 
 /** Heliocentric ecliptic longitude (tropical) and radius (AU) for a planet */
@@ -282,7 +294,11 @@ function helioToGeo(
 }
 
 /** Compute geocentric sidereal longitudes for all planets at a given JD */
-function computePositions(jd: number): Record<Planet, number> {
+function computePositions(
+  jd: number,
+  latDeg: number = 20,
+  lonDeg: number = 80
+): Record<Planet, number> {
   const T = (jd - J2000) / 36525;
   const ay = lahiriAyanamsa(jd);
 
@@ -294,14 +310,13 @@ function computePositions(jd: number): Record<Planet, number> {
     (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Ms_r) +
     (0.019993 - 0.000101 * T) * Math.sin(2 * Ms_r) +
     0.000289 * Math.sin(3 * Ms_r);
-  const sunTrop = n360(L0s + Cs); // Tropical (geocentric)
-  const Su = n360(sunTrop - ay); // Sidereal (Vedic)
+  const sunTrop = n360(L0s + Cs);
+  const Su = n360(sunTrop - ay);
 
-  // Earth heliocentric (needed to convert other planets to geocentric)
-  const earthLon = n360(sunTrop + 180); // Earth opp. Sun (tropical)
+  const earthLon = n360(sunTrop + 180);
   const earthR = heliocentric("Ea", T).r;
 
-  // ── Moon (astronomia precise ELP-2000/82) ───────────────────────────────
+  // ── Moon ───────────────────────────────────────────────────────────────
   const moonPos = moonposition.position(jd);
   const MoTrop = n360(deg(moonPos.lon));
   const Mo = n360(MoTrop - ay);
@@ -312,21 +327,90 @@ function computePositions(jd: number): Record<Planet, number> {
     return n360(helioToGeo(h.lon, h.r, earthLon, earthR) - ay);
   }
 
-  // ── Rahu mean node (tropical→sidereal) ───────────────────────────────────
+  // ── Rahu / Ketu ──────────────────────────────────────────────────────────
   const rahuTrop = n360(125.0445 - 1934.1362 * T + 0.0020708 * T * T);
   const Ra = n360(rahuTrop - ay);
   const Ke = n360(Ra + 180);
 
+  // ── Outer planets ────────────────────────────────────────────────────────
+  const Ur = geo("Ur");
+  const Ne = geo("Ne");
+  const Pl = geo("Pl");
+
+  // ── Mandi / Gulika – Exact Algorithm ─────────────────────────────────────
+  // 1. Get Sunrise/Sunset
+  // 2. Determine Day or Night birth
+  // 3. Divide duration into 8 parts
+  // 4. Assign segment index logically
+  // 5. Mandi Longitude = Ascendant at Mandi Time
+
+  function getSunTimes(j: number) {
+    const t = (j - J2000) / 36525;
+    const l0 = n360(280.46646 + 36000.76983 * t);
+    const m = n360(357.52911 + 35999.05029 * t);
+    const c = 1.914602 * Math.sin(r(m)) + 0.019993 * Math.sin(2 * r(m));
+    const sunTr = n360(l0 + c);
+    const decl = deg(Math.asin(Math.sin(r(23.4372)) * Math.sin(r(sunTr))));
+    const cosH = -Math.tan(r(latDeg)) * Math.tan(r(decl));
+    const ha = cosH >= 1 ? 0 : cosH <= -1 ? 90 : deg(Math.acos(cosH));
+    const dl = (2 * ha) / 15;
+    
+    // Correct local noon mapped to integer boundaries to prevent +/- 12h inversions
+    const localNoonJD = Math.round(j + lonDeg / 360);
+    const noon = localNoonJD - lonDeg / 360;
+    const weekday = (localNoonJD + 1) % 7; 
+
+    return {
+      sunrise: noon - dl / 48,
+      sunset: noon + dl / 48,
+      noon: noon,
+      weekday: weekday,
+    };
+  }
+
+  const today = getSunTimes(jd);
+  let isDay = false;
+  let durationJd = 0;
+  let startJd = 0;
+  let birthWeekday = 0;
+
+  if (jd >= today.sunrise && jd < today.sunset) {
+    isDay = true;
+    durationJd = today.sunset - today.sunrise;
+    startJd = today.sunrise;
+    birthWeekday = today.weekday;
+  } else if (jd >= today.sunset) {
+    isDay = false;
+    const tomorrow = getSunTimes(jd + 1);
+    durationJd = tomorrow.sunrise - today.sunset;
+    startJd = today.sunset;
+    birthWeekday = today.weekday;
+  } else {
+    // jd < today.sunrise (Night birth belonging to previous day)
+    isDay = false;
+    const yesterday = getSunTimes(jd - 1);
+    durationJd = today.sunrise - yesterday.sunset;
+    startJd = yesterday.sunset;
+    birthWeekday = yesterday.weekday;
+  }
+
+  // Correct 0-based segment multipliers for the BEGINNING of Saturn's Kaala Hora part
+  const DAY_INDEX: Record<number, number> = { 0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0 };
+  // Night uses the 5th weekday lord's sequence from Parashara
+  const NIGHT_INDEX: Record<number, number> = { 0: 2, 1: 1, 2: 0, 3: 6, 4: 5, 5: 4, 6: 3 };
+
+  const mandiIdx = isDay ? (DAY_INDEX[birthWeekday] ?? 0) : (NIGHT_INDEX[birthWeekday] ?? 0);
+  const jdMandi = startJd + (durationJd / 8) * mandiIdx;
+
+  // Step 7: Convert Mandi Time to Longitude (Ascendant)
+  const { asc: mandiAsc } = computeAscAndMC(jdMandi, latDeg, lonDeg);
+  const Mn = mandiAsc; 
+
+
   return {
-    Su,
-    Mo,
-    Ma: geo("Ma"),
-    Me: geo("Me"),
-    Ju: geo("Ju"),
-    Ve: geo("Ve"),
-    Sa: geo("Sa"),
-    Ra,
-    Ke,
+    Su, Mo,
+    Ma: geo("Ma"), Me: geo("Me"), Ju: geo("Ju"), Ve: geo("Ve"), Sa: geo("Sa"),
+    Ra, Ke, Ur, Ne, Pl, Mn,
   };
 }
 
@@ -336,6 +420,8 @@ function detectRetrograde(jd: number): Record<Planet, boolean> {
   const p2 = computePositions(jd + 0.5);
   const retro = {} as Record<Planet, boolean>;
   for (const p of PLANETS) {
+    // Mandi is a fixed sensitive point, not a physical body — never retrograde
+    if (p === "Mn") { retro[p] = false; continue; }
     let diff = p2[p] - p1[p];
     while (diff > 180) diff -= 360;
     while (diff < -180) diff += 360;
@@ -439,7 +525,7 @@ function getNavamsaSign(longitude: number): number {
 }
 
 // Signs 0-11 where planets are exalted
-const EXALTED_SIGN: Record<Planet, number> = {
+const EXALTED_SIGN: Partial<Record<Planet, number>> = {
   Su: 0,
   Mo: 1,
   Ma: 9,
@@ -449,10 +535,11 @@ const EXALTED_SIGN: Record<Planet, number> = {
   Sa: 6,
   Ra: 1,
   Ke: 7,
+  // No traditional exaltation for outer planets or Mandi
 };
 
 // Signs 0-11 where planets are debilitated
-const DEBILITATED_SIGN: Record<Planet, number> = {
+const DEBILITATED_SIGN: Partial<Record<Planet, number>> = {
   Su: 6,
   Mo: 7,
   Ma: 3,
@@ -473,10 +560,12 @@ function computeChart(
 ): {
   ascendant: number;
   ascLongitude: number;
+  mcLongitude: number;   // sidereal MC (H10 bhava madhya)
   jd: number;
   planets: PlanetData[];
   houses: Record<number, PlanetData[]>;
-  cusps: number[];
+  cusps: number[];       // 12 Sripati cusp start-degrees (start of each house)
+  madhyas: number[];     // 12 bhava madhya degrees
 } {
   let y, m, d, localHour;
 
@@ -508,16 +597,51 @@ function computeChart(
 
   const { asc: ascLon, mc: mcLon, ay } = computeAscAndMC(jd, latDeg, lonDeg);
   const ascSignIdx = Math.floor(ascLon / 30);
-  
-  // Equal House cusps (Sripathi Paddhati / Vedic Bhava Chalit)
-  // H1 midpoint = ascendant degree, so H1 cusp starts at Asc - 15°
-  // Each house spans exactly 30°
-  const cusps: number[] = [];
-  for (let i = 0; i < 12; i++) {
-    cusps.push(n360(ascLon - 15 + i * 30));
-  }
-  
-    const positions = computePositions(jd);
+
+  // ─── True Sripati (Porphyry) Bhava Chalit Cusps ────────────────────────────
+  // 4 major angles (sidereal):
+  //   H1  bhava madhya = Ascendant
+  //   H10 bhava madhya = MC (Midheaven)
+  //   H7  bhava madhya = Descendant = Asc + 180°
+  //   H4  bhava madhya = IC        = MC  + 180°
+  //
+  // Each quadrant arc (going forward in zodiac) is trisected to give
+  // the intermediate bhava madhyas (H2, H3, H5, H6, H8, H9, H11, H12).
+  // House cusps are then the midpoints between adjacent bhava madhyas.
+  const descLon = n360(ascLon + 180);
+  const icLon   = n360(mcLon  + 180);
+
+  // The four quadrant arcs (forward in zodiac, Asc → IC → Desc → MC → Asc)
+  const arcQ1 = n360(icLon   - ascLon);   // Asc  → IC   (H1–H4 region)
+  const arcQ2 = n360(descLon - icLon);    // IC   → Desc (H4–H7 region)
+  const arcQ3 = n360(mcLon   - descLon);  // Desc → MC   (H7–H10 region)
+  const arcQ4 = n360(ascLon  - mcLon);    // MC   → Asc  (H10–H1 region)
+
+  // 12 bhava madhyas (house midpoints in ecliptic longitude)
+  const madhyas: number[] = [
+    ascLon,                          // H1  = Ascendant
+    n360(ascLon + arcQ1 / 3),        // H2
+    n360(ascLon + arcQ1 * 2 / 3),   // H3
+    icLon,                           // H4  = IC
+    n360(icLon  + arcQ2 / 3),        // H5
+    n360(icLon  + arcQ2 * 2 / 3),   // H6
+    descLon,                         // H7  = Descendant
+    n360(descLon + arcQ3 / 3),       // H8
+    n360(descLon + arcQ3 * 2 / 3),  // H9
+    mcLon,                           // H10 = MC
+    n360(mcLon  + arcQ4 / 3),        // H11
+    n360(mcLon  + arcQ4 * 2 / 3),   // H12
+  ];
+
+  // cusps[i] = start of house (i+1) = midpoint of arc from madhya[i-1] to madhya[i]
+  const cusps: number[] = madhyas.map((m, i) => {
+    const prev = madhyas[(i + 11) % 12];
+    const arc  = n360(m - prev);
+    return n360(prev + arc / 2);
+  });
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const positions = computePositions(jd, latDeg, lonDeg);
   const retrogrades = detectRetrograde(jd);
   const sunLon = positions["Su"];
 
@@ -532,19 +656,20 @@ function computeChart(
     );
     const house = ((signIdx - ascSignIdx + 12) % 12) + 1;
     const isNode = planet === "Ra" || planet === "Ke";
+    const isOuter = planet === "Ur" || planet === "Ne" || planet === "Pl" || planet === "Mn";
 
     let combust = false;
     const orb = COMBUST_ORB[planet];
-    if (orb && !isNode && planet !== "Su") {
+    if (orb && !isNode && !isOuter && planet !== "Su") {
       let diff = Math.abs(longitude - sunLon);
       if (diff > 180) diff = 360 - diff;
       combust = diff < orb;
     }
 
-    const exalted = signIdx === EXALTED_SIGN[planet];
-    const debilitated = signIdx === DEBILITATED_SIGN[planet];
+    const exalted = EXALTED_SIGN[planet] !== undefined && signIdx === EXALTED_SIGN[planet];
+    const debilitated = DEBILITATED_SIGN[planet] !== undefined && signIdx === DEBILITATED_SIGN[planet];
 
-    // Chalit House assignment using actual sidereal house cusps
+    // Chalit House: planet falls in whichever Sripati cusp interval contains it
     const chalitHouse = getChalitHouse(longitude, cusps);
 
     return {
@@ -569,7 +694,7 @@ function computeChart(
   for (let i = 1; i <= 12; i++) houses[i] = [];
   for (const pd of planets) houses[pd.house].push(pd);
 
-  return { ascendant: ascSignIdx, ascLongitude: ascLon, jd, planets, houses, cusps };
+  return { ascendant: ascSignIdx, ascLongitude: ascLon, mcLongitude: mcLon, jd, planets, houses, cusps, madhyas };
 }
 
 // ─── Transit (Gochar) ────────────────────────────────────────────────────────
@@ -627,7 +752,7 @@ function computeDasha(moonLongitude: number, birthJd: number): DashaPeriod[] {
   const nakshatraSpan = 360 / 27;
   const posInNakshatra = (moonLongitude % nakshatraSpan) / nakshatraSpan;
   const balanceFraction = 1 - posInNakshatra;
-  const balanceYears = DASHA_YEARS[lordPlanet] * balanceFraction;
+  const balanceYears = (DASHA_YEARS[lordPlanet] ?? 0) * balanceFraction;
 
   // Convert Julian Day back to exact Unix timestamp (JD 2440587.5 is 1970-01-01T00:00:00Z)
   const unixMs = (birthJd - 2440587.5) * 86400000;
@@ -642,7 +767,7 @@ function computeDasha(moonLongitude: number, birthJd: number): DashaPeriod[] {
   for (let i = 0; i < 9; i++) {
     const idx = (startIdx + i) % 9;
     const planet = DASHA_ORDER[idx];
-    const years = i === 0 ? balanceYears : DASHA_YEARS[planet];
+    const years = i === 0 ? balanceYears : (DASHA_YEARS[planet] ?? 0);
     // Calendar-based addition with 365.25 days/year (traditional Vedic solar year)
     const end = addYearsCalendar(cursor, years);
     periods.push({
@@ -671,106 +796,47 @@ function KundaliChartSVG({
   houses,
   ascendant,
   cusps,
+  showChalitShifts = false,
 }: {
   houses: Record<number, PlanetData[]>;
-  ascendant: number; // 0-11
-  cusps?: number[]; // Placidus exact cusps (12 array)
+  ascendant: number; // 0-11 (sidereal sign index)
+  cusps?: number[];  // Equal (Sripathi) house cusps — 12 start-degrees
+  showChalitShifts?: boolean; // highlight planets that shifted house vs D1
 }) {
   const SIZE = 368;
   const ORANGE = "#f97316";
 
-  // Rashi number for each house (1-12, starting from ascendant)
-  function rashiNum(h: number) {
-    return ((ascendant + h - 1) % 12) + 1;
-  }
-
   // Planet text directly centered in the geometrically widest part of each house region
   const CX: Record<number, number> = {
-    1: 0.5,
-    2: 0.25,
-    3: 0.12,
-    4: 0.25,
-    5: 0.12,
-    6: 0.25,
-    7: 0.5,
-    8: 0.75,
-    9: 0.88,
-    10: 0.75,
-    11: 0.88,
-    12: 0.75,
+    1: 0.5,  2: 0.25, 3: 0.12, 4: 0.25, 5: 0.12,  6: 0.25,
+    7: 0.5,  8: 0.75, 9: 0.88, 10: 0.75, 11: 0.88, 12: 0.75,
   };
   const CY: Record<number, number> = {
-    1: 0.25,
-    2: 0.12,
-    3: 0.25,
-    4: 0.5,
-    5: 0.75,
-    6: 0.88,
-    7: 0.75,
-    8: 0.88,
-    9: 0.75,
-    10: 0.5,
-    11: 0.25,
-    12: 0.12,
+    1: 0.25, 2: 0.12, 3: 0.25, 4: 0.5,  5: 0.75,  6: 0.88,
+    7: 0.75, 8: 0.88, 9: 0.75, 10: 0.5,  11: 0.25, 12: 0.12,
   };
 
-  // Rashi number placements specifically positioned firmly near the inner corners
+  // Rashi number placements near the inner corners
   const RX: Record<number, number> = {
-    1: 0.5,
-    2: 0.25,
-    3: 0.19,
-    4: 0.44,
-    5: 0.19,
-    6: 0.25,
-    7: 0.5,
-    8: 0.75,
-    9: 0.81,
-    10: 0.56,
-    11: 0.81,
-    12: 0.75,
+    1: 0.5,  2: 0.25, 3: 0.19, 4: 0.44, 5: 0.19,  6: 0.25,
+    7: 0.5,  8: 0.75, 9: 0.81, 10: 0.56, 11: 0.81, 12: 0.75,
   };
   const RY: Record<number, number> = {
-    1: 0.44,
-    2: 0.19,
-    3: 0.26,
-    4: 0.51,
-    5: 0.76,
-    6: 0.82,
-    7: 0.58,
-    8: 0.82,
-    9: 0.76,
-    10: 0.51,
-    11: 0.26,
-    12: 0.19,
+    1: 0.44, 2: 0.19, 3: 0.26, 4: 0.51, 5: 0.76,  6: 0.82,
+    7: 0.58, 8: 0.82, 9: 0.76, 10: 0.51, 11: 0.26, 12: 0.19,
   };
 
-  // Semantic colours based on user image
+  // Semantic colours
   const PCOL: Record<Planet, string> = {
-    Su: "#ef4444",
-    Mo: "#818cf8",
-    Ma: "#166534",
-    Me: "#475569",
-    Ju: "#c084fc",
-    Ve: "#166534",
-    Sa: "#b91c1c",
-    Ra: "#b91c1c",
-    Ke: "#b45309",
+    Su: "#ef4444", Mo: "#818cf8", Ma: "#166534", Me: "#475569",
+    Ju: "#c084fc", Ve: "#166534", Sa: "#b91c1c", Ra: "#f97316", Ke: "#b45309",
+    Ur: "#06b6d4", Ne: "#3b82f6", Pl: "#8b5cf6", Mn: "#6b7280",
   };
 
-  // Rashi number colours based on image style
   const RCOL: Record<number, string> = {
-    1: "#ef4444",
-    2: "#818cf8",
-    3: "#166534",
-    4: "#3b82f6",
-    5: "#c084fc",
-    6: "#166534",
-    7: "#b91c1c",
-    8: "#b91c1c",
-    9: "#f59e0b",
-    10: "#ef4444",
-    11: "#0f172a",
-    12: "#0f172a",
+    1: "#ef4444", 2: "#818cf8", 3: "#166534", 4: "#3b82f6",
+    5: "#c084fc", 6: "#166534", 7: "#b91c1c", 8: "#b91c1c",
+    9: "#f59e0b", 10: "#ef4444", 11: "#0f172a", 12: "#0f172a",
   };
 
   const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
@@ -780,99 +846,66 @@ function KundaliChartSVG({
       width={SIZE}
       height={SIZE}
       viewBox={`0 0 ${SIZE} ${SIZE}`}
-      style={{
-        maxWidth: "100%",
-        height: "auto",
-        background: "#ffffff",
-        borderRadius: "4px",
-      }}
+      style={{ maxWidth: "100%", height: "auto", background: "#ffffff", borderRadius: "4px" }}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Authentic NI Chart Geometry */}
-      {/* Outer Square border */}
-      <rect
-        x={0}
-        y={0}
-        width={SIZE}
-        height={SIZE}
-        fill="none"
-        stroke={ORANGE}
-        strokeWidth={1.5}
-      />
-
+      {/* Outer square */}
+      <rect x={0} y={0} width={SIZE} height={SIZE} fill="none" stroke={ORANGE} strokeWidth={1.5} />
       {/* Corner-to-corner diagonals */}
-      <line
-        x1={0}
-        y1={0}
-        x2={SIZE}
-        y2={SIZE}
-        stroke={ORANGE}
-        strokeWidth={1.5}
-      />
-      <line
-        x1={0}
-        y1={SIZE}
-        x2={SIZE}
-        y2={0}
-        stroke={ORANGE}
-        strokeWidth={1.5}
-      />
-
-      {/* Center diamond (connecting midpoints) */}
+      <line x1={0} y1={0} x2={SIZE} y2={SIZE} stroke={ORANGE} strokeWidth={1.5} />
+      <line x1={0} y1={SIZE} x2={SIZE} y2={0} stroke={ORANGE} strokeWidth={1.5} />
+      {/* Center diamond */}
       <polygon
-        points={`${SIZE / 2},0 0,${SIZE / 2} ${SIZE / 2},${SIZE} ${SIZE},${SIZE / 2}`}
-        fill="none"
-        stroke={ORANGE}
-        strokeWidth={1.5}
+        points={`${SIZE/2},0 0,${SIZE/2} ${SIZE/2},${SIZE} ${SIZE},${SIZE/2}`}
+        fill="none" stroke={ORANGE} strokeWidth={1.5}
       />
 
-      {/* Houses: rashi number + planets */}
       {ALL.map((house) => {
         const cx = CX[house] * SIZE;
         const cy = CY[house] * SIZE;
         const rx = RX[house] * SIZE;
         const ry = RY[house] * SIZE;
         const plts = houses[house] ?? [];
-        const rn = ((ascendant + house - 1) % 12) + 1; // This is the rashi *in* the house
-        const pStart = cy - (plts.length - 1) * 7;
+        const rn = ((ascendant + house - 1) % 12) + 1;
+        // Each planet label is ~18px tall; center the column vertically
+        const pStart = cy - ((plts.length - 1) * 18) / 2;
 
         return (
           <g key={house}>
             {/* Rashi number */}
             <text
-              x={rx}
-              y={ry}
-              textAnchor="middle"
+              x={rx} y={ry} textAnchor="middle"
               fill={RCOL[rn] || "#1e293b"}
-              fontSize={13}
-              fontWeight="700"
-              fontFamily="Arial,sans-serif"
+              fontSize={13} fontWeight="700" fontFamily="Arial,sans-serif"
             >
               {rn}
             </text>
 
             {/* Planets */}
             {plts.map((p, i) => {
-              const pSign = (p.signIdx ?? 0) + 1;
-              const isChalitShift = pSign !== rn;
-              const displayText = isChalitShift ? `${pSign} ${p.planet}` : p.planet;
+              // In Chalit mode: show ALL planets as PlanetName(rashiNum) using natural colors.
+              // The rashi in parens vs the cell's rashi number is the visual shift indicator —
+              // matching image 1 reference format where e.g. Mo(11) in a rashi-12 cell = shifted.
+              const displayText = showChalitShifts
+                ? `${p.planet}(${p.signIdx + 1})`  // all planets show rashi in parens
+                : p.planet;
 
               return (
                 <text
                   key={p.planet}
                   x={cx}
-                  y={pStart + i * 16}
+                  y={pStart + i * 18}
                   textAnchor="middle"
-                  fill={isChalitShift ? "#ef4444" : PCOL[p.planet]}
-                  fontSize={13}
+                  fill={PCOL[p.planet]}  // always natural planet color
+                  fontSize={12}
                   fontWeight="700"
                   fontFamily="Arial,sans-serif"
                 >
                   {displayText}
-                  <tspan dy="-6" fontSize="9" fontWeight="600">
+                  <tspan dy="-5" fontSize="8" fontWeight="600">
                     {Math.floor(p.degInSign)}
                   </tspan>
-                  <tspan dy="6">
+                  <tspan dy="5" fontSize="10">
                     {p.retrograde && " *"}
                     {p.exalted && " ↑"}
                     {p.debilitated && " ↓"}
@@ -1262,11 +1295,12 @@ function KundaliModal({
                 </div>
               )}
               {activeChartTab === "Chalit" && (
-                <div className="w-full max-w-sm" style={{ filter: "brightness(1.1) contrast(1.1)"}}>
+                <div className="w-full max-w-sm">
                   <KundaliChartSVG
                     houses={chalitChartHouses.houses}
                     ascendant={chalitChartHouses.ascendant}
                     cusps={chalitChartHouses.cusps}
+                    showChalitShifts={true}
                   />
                 </div>
               )}
@@ -1279,7 +1313,84 @@ function KundaliModal({
                 </div>
               )}
             </div>
-          </div>
+
+          {/* Chalit Bhava Shift Summary */}
+          {activeChartTab === "Chalit" && (() => {
+            const shifted = chart.planets.filter(p => p.house !== p.chalitHouse);
+            return (
+              <div className="rounded-xl border border-[#1e2a45] bg-[#0a1020] p-4">
+                <p className="text-[10px] uppercase tracking-[2px] text-[#f4c430] mb-3 font-semibold">
+                  Bhava Chalit — House Shifts
+                  <span className="ml-2 normal-case tracking-normal text-[#9ca3af] font-normal">
+                    (Sripati · Asc/IC/Desc/MC anchors · unequal houses)
+                  </span>
+                </p>
+                {shifted.length === 0 ? (
+                  <p className="text-xs text-[#6b7280] italic">
+                    No planets shifted house — D1 and Chalit placements are identical.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {shifted.map(p => (
+                      <div
+                        key={p.planet}
+                        className="flex items-center gap-1.5 rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 px-3 py-1.5 text-xs"
+                      >
+                        <span className="font-bold text-[#f97316]">{PLANET_FULL[p.planet]}</span>
+                        <span className="text-[#6b7280]">moved</span>
+                        <span className="font-semibold text-[#e2e8f0]">H{p.house}</span>
+                        <span className="text-[#6b7280]">→</span>
+                        <span className="font-semibold text-[#f4c430]">H{p.chalitHouse}</span>
+                        <span className="text-[#4b5563] text-[10px]">
+                          ({RASHI_SHORT[p.signIdx]} {Math.floor(p.degInSign)}°)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                                {/* Bhava Madhya table */}
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr style={{ background: "#0f1829" }}>
+                        {["House","Angle","Bhava Madhya","Sign","Span"].map(h => (
+                          <th key={h} className="px-2 py-1.5 text-left text-[#6b7280] font-normal uppercase tracking-wider">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chart.madhyas.map((madh, idx) => {
+                        const signIdx   = Math.floor(madh / 30);
+                        const degInSign = madh % 30;
+                        const mins      = Math.floor((degInSign % 1) * 60);
+                        // Span = arc from this madhya to next madhya
+                        const nextMadh  = chart.madhyas[(idx + 1) % 12];
+                        const span      = n360(nextMadh - madh);
+                        const angleLabel: Record<number,string> = { 0:"Asc", 3:"IC", 6:"Desc", 9:"MC" };
+                        const isAngle   = angleLabel[idx] !== undefined;
+                        return (
+                          <tr key={idx} className="border-t border-[#1e2a45]"
+                            style={{ background: isAngle ? "rgba(244,196,48,0.06)" : "#111a2e" }}
+                          >
+                            <td className="px-2 py-1 font-bold" style={{ color: isAngle ? "#f4c430" : "#9ca3af" }}>H{idx + 1}</td>
+                            <td className="px-2 py-1 text-[10px]" style={{ color: isAngle ? "#f4c430" : "#374151" }}>
+                              {angleLabel[idx] ?? ""}
+                            </td>
+                            <td className="px-2 py-1 text-[#e2e8f0] font-mono">
+                              {Math.floor(degInSign)}° {String(mins).padStart(2,"0")}&apos;
+                            </td>
+                            <td className="px-2 py-1 text-[#9ca3af]">{RASHI_NAMES[signIdx]}</td>
+                            <td className="px-2 py-1 text-[#6b7280]">{span.toFixed(1)}°</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
             
             {/* Planetary Positions Table */}
             <div className="flex-1 min-w-0">
@@ -1300,7 +1411,7 @@ function KundaliModal({
                         "Nakshatra",
                         "Pada",
                         "D1 House",
-                        "Eq House",
+                        "Chalit H",
                       ].map((h) => (
                         <th
                           key={h}
@@ -1401,6 +1512,11 @@ function KundaliModal({
               <span>
                 Su=Sun, Mo=Moon, Ma=Mars, Me=Mercury, Ju=Jupiter, Ve=Venus, Sa=Saturn, Ra=Rahu, Ke=Ketu
               </span>
+              <span className="text-[#06b6d4]">Ur=Uranus</span>
+              <span className="text-[#3b82f6]">Ne=Neptune</span>
+              <span className="text-[#8b5cf6]">Pl=Pluto</span>
+              <span className="text-[#6b7280]">Mn=Mandi/Gulika</span>
+              <span className="text-white/50 italic">(Outer planets shown for reference; no traditional exaltation/debilitation)</span>
             </div>
           </div>
         </div>
@@ -1413,7 +1529,7 @@ function KundaliModal({
               — Balance at birth:{" "}
               {PLANET_FULL[NAKSHATRA_LORDS[moonData.nakshatraIdx]]}{" "}
               {(
-                DASHA_YEARS[NAKSHATRA_LORDS[moonData.nakshatraIdx]] *
+                (DASHA_YEARS[NAKSHATRA_LORDS[moonData.nakshatraIdx]] ?? 0) *
                 (1 - (moonData.longitude % (360 / 27)) / (360 / 27))
               ).toFixed(2)}{" "}
               yrs
@@ -1499,6 +1615,7 @@ function InvoiceModal({
 }) {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("₹");
+  const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
@@ -1549,6 +1666,7 @@ function InvoiceModal({
           type: "invoice",
           amount: amount,
           currency: currency,
+          note: note.trim() || undefined,
         }),
       });
 
@@ -1599,6 +1717,20 @@ function InvoiceModal({
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="block text-xs uppercase tracking-wider text-[#e2c97e] mb-1.5 font-semibold">
+              Note to Client <span className="normal-case tracking-normal text-[#6b7280] font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Thank you for the session! Your next follow-up is recommended in 6 months..."
+              rows={3}
+              className="w-full rounded-xl border border-[#1e2a45] bg-[#0a1020] px-4 py-3 text-sm text-[#e2e8f0] outline-none focus:border-[#f4c430]/50 resize-none placeholder:text-[#374151]"
+            />
+            <p className="text-[10px] text-[#6b7280]">This will appear in the email under &ldquo;A note from Namahastroscience team&rdquo;</p>
+          </div>
+
           {error && <p className="text-xs text-red-400 bg-red-400/10 p-2 rounded border border-red-400/20">{error}</p>}
 
           <div className="flex gap-3 pt-4">
@@ -1642,6 +1774,7 @@ export default function AdminBookingsPage() {
     null,
   );
   const [remindingKey, setRemindingKey] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const endpoint = useMemo(() => {
     if (!selectedDate) return "/api/bookings";
@@ -1674,12 +1807,27 @@ export default function AdminBookingsPage() {
       active = false;
       controller.abort();
     };
-  }, [endpoint]);
+  }, [endpoint, refreshKey]);
 
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const activeBookings = bookings.filter((b) => !b.completed);
-  const completedBookings = bookings.filter((b) => b.completed);
+  const filteredBookings = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return bookings;
+    const qDigits = q.replace(/\D/g, ""); // digits only (empty if query has none)
+    return bookings.filter(
+      (b) =>
+        b.fullName.toLowerCase().includes(q) ||
+        b.email.toLowerCase().includes(q) ||
+        b.whatsapp.toLowerCase().includes(q) ||
+        // Only match by digits when the query actually contains digits
+        (qDigits.length > 0 && b.whatsapp.replace(/\D/g, "").includes(qDigits))
+    );
+  }, [bookings, searchQuery]);
+
+  const activeBookings = filteredBookings.filter((b) => !b.completed);
+  const completedBookings = filteredBookings.filter((b) => b.completed);
 
   const handleExportToExcel = () => {
     if (completedBookings.length === 0) return;
@@ -2065,16 +2213,62 @@ export default function AdminBookingsPage() {
               className="rounded-lg border border-[#d6c7b2] bg-[#f9f4ec] px-3 py-2"
             />
           </div>
+
+          {/* Search bar */}
+          <div className="flex-1 min-w-[220px]">
+            <label className="mb-2 block text-sm text-[#6b4c3b]">
+              Search client
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9a7b6b] text-sm pointer-events-none">🔍</span>
+              <input
+                type="text"
+                placeholder="Name, email or WhatsApp…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-[#d6c7b2] bg-[#f9f4ec] pl-9 pr-4 py-2 text-sm text-[#2b1b12] placeholder:text-[#9a7b6b] outline-none focus:border-[#7a1c1c]/60 focus:ring-2 focus:ring-[#7a1c1c]/10 transition"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9a7b6b] hover:text-[#7a1c1c] text-xs font-bold transition"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={() => setSelectedDate("")}
+            onClick={() => { setSelectedDate(""); setSearchQuery(""); }}
             className="rounded-lg bg-[#7a1c1c] px-4 py-2 text-sm text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414]"
           >
-            Clear Filter
+            Clear Filters
           </button>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="flex items-center gap-1.5 rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6] disabled:opacity-50"
+            title="Refresh bookings"
+          >
+            <span style={{ display: "inline-block", animation: loading ? "admin-spin 0.7s linear infinite" : "none" }}>
+              ↻
+            </span>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+
+          <style>{`@keyframes admin-spin { to { transform: rotate(360deg); } }`}</style>
+
           <span className="text-sm font-medium text-[#6b4c3b]">
             {loading
               ? "Loading..."
+              : searchQuery
+              ? `${filteredBookings.length} result(s) found`
               : `${activeBookings.length} upcoming appointment(s)`}
           </span>
         </div>

@@ -9,11 +9,14 @@
       "slot": "Standard-1775979798674",
       "createdAt": "2026-04-12T07:43:18.674Z",
       "feesPaid": false,
-      "birthDate": "2026-04-30",
-      "birthTime": "11:22",
+      "birthDate": "2003-02-04",
+      "birthTime": "11:20",
       "birthPlace": "talala, Talala Taluka, Gir Somnath, Gujarat, India",
       "birthLat": 21.0560298,
-      "birthLon": 70.5303798
+      "birthLon": 70.5303798,
+      "completed": false,
+      "billedAmount": "0",
+      "currency": "₹"
     }
   }
 }

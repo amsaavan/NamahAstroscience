@@ -2,47 +2,78 @@ import crypto from "crypto";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 
-// ─── OTP Store (in-memory, single-use, 10-min expiry) ──────────────────────
+// ─── OTP helpers (cookie-backed, survives HMR & serverless) ────────────────
+// The OTP value itself is never stored server-side.
+// Instead we issue a signed cookie: HMAC(otp + "|" + expiresAt) + "|" + expiresAt
+// so the browser holds the token and we re-derive the expected HMAC on verify.
 
-type OtpEntry = { otp: string; expiresAt: number; lastSentAt: number; attempts: number };
-// Single admin slot — only one OTP active at a time
-let otpStore: OtpEntry | null = null;
+const OTP_TTL_MS        = 10 * 60 * 1000; // 10 minutes
+const OTP_RATE_LIMIT_MS = 60 * 1000;       // 1 OTP per 60 seconds
+export const OTP_COOKIE  = "admin_otp_tok";
 
-const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const OTP_RATE_LIMIT_MS = 60 * 1000; // 1 OTP per 60 seconds
+export function getOtpSecret(): string {
+  return process.env.ADMIN_JWT_SECRET ?? "fallback-dev-secret";
+}
+
+/** Build the signed OTP cookie value: `hmac|expiresAt` */
+export function buildOtpCookieValue(otp: string, expiresAt: number): string {
+  const payload = `${otp}|${expiresAt}`;
+  const hmac = crypto
+    .createHmac("sha256", getOtpSecret())
+    .update(payload)
+    .digest("hex");
+  return `${hmac}|${expiresAt}`;
+}
+
+/** Returns the OTP TTL in seconds (for the cookie max-age) */
+export function otpTtlSeconds(): number {
+  return OTP_TTL_MS / 1000;
+}
+
+/** Rate-limit guard — stored in a module-level variable.
+ *  In serverless, this only guards within the same instance (good enough;
+ *  the cookie TTL prevents reuse across instances). */
+let _lastSentAt = 0;
 
 export function canSendOtp(): boolean {
-  if (!otpStore) return true;
-  return Date.now() - otpStore.lastSentAt >= OTP_RATE_LIMIT_MS;
+  return Date.now() - _lastSentAt >= OTP_RATE_LIMIT_MS;
 }
 
 export function nextOtpAllowedInMs(): number {
-  if (!otpStore) return 0;
-  const remaining = OTP_RATE_LIMIT_MS - (Date.now() - otpStore.lastSentAt);
-  return Math.max(0, remaining);
+  return Math.max(0, OTP_RATE_LIMIT_MS - (Date.now() - _lastSentAt));
 }
 
 export function generateOtp(): string {
-  const otp = crypto.randomInt(100000, 999999).toString();
-  const now = Date.now();
-  otpStore = { otp, expiresAt: now + OTP_TTL_MS, lastSentAt: now, attempts: 0 };
-  return otp;
+  _lastSentAt = Date.now();
+  return crypto.randomInt(100_000, 999_999).toString();
 }
 
-export function verifyOtp(input: string): boolean {
-  if (!otpStore) return false;
-  if (Date.now() > otpStore.expiresAt || otpStore.attempts >= 5) {
-    otpStore = null; // lockout completely if expired or too many failed attempts
-    return false;
-  }
-  
-  const valid = input === otpStore.otp;
-  if (valid) {
-    otpStore = null; // single-use
-  } else {
-    otpStore.attempts += 1;
-  }
-  return valid;
+/**
+ * Verify an OTP against the cookie token.
+ * @param input  - the 6-digit code the user entered
+ * @param cookieValue - the value of the OTP_COOKIE set during /send
+ */
+export function verifyOtp(input: string, cookieValue: string): boolean {
+  if (!cookieValue) return false;
+  const parts = cookieValue.split("|");
+  if (parts.length !== 2) return false;
+  const [storedHmac, expiresAtStr] = parts;
+  const expiresAt = Number(expiresAtStr);
+  if (!expiresAt || Date.now() > expiresAt) return false;
+
+  // Re-derive expected HMAC for the submitted OTP
+  const expectedPayload = `${input}|${expiresAt}`;
+  const expectedHmac = crypto
+    .createHmac("sha256", getOtpSecret())
+    .update(expectedPayload)
+    .digest("hex");
+
+  // Constant-time comparison to prevent timing attacks
+  if (storedHmac.length !== expectedHmac.length) return false;
+  return crypto.timingSafeEqual(
+    Buffer.from(storedHmac, "hex"),
+    Buffer.from(expectedHmac, "hex")
+  );
 }
 
 // ─── JWT Session (HMAC-SHA256, no external packages) ───────────────────────

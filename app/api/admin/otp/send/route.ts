@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import {
+    buildOtpCookieValue,
     canSendOtp,
     generateOtp,
     isAuthConfigValid,
     nextOtpAllowedInMs,
+    OTP_COOKIE,
+    otpTtlSeconds,
 } from "@/lib/admin-auth";
 import { sendAdminOtp } from "@/lib/email";
 
@@ -24,6 +27,7 @@ export async function POST() {
     }
 
     const otp = generateOtp();
+    const expiresAt = Date.now() + otpTtlSeconds() * 1000;
     const result = await sendAdminOtp(otp);
 
     if (!result.sent) {
@@ -33,5 +37,17 @@ export async function POST() {
         );
     }
 
-    return NextResponse.json({ success: true });
+    // Store the HMAC-signed token in a short-lived httpOnly cookie.
+    // This survives HMR reloads and serverless cold starts.
+    const response = NextResponse.json({ success: true });
+    response.cookies.set({
+        name: OTP_COOKIE,
+        value: buildOtpCookieValue(otp, expiresAt),
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: otpTtlSeconds(),
+    });
+    return response;
 }

@@ -386,14 +386,7 @@ export default function AstrologerWebsite() {
 
 
 
-  const maxDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    const yyyy = String(d.getFullYear());
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
+
 
   const scrollToBooking = () => {
     const section = document.getElementById("booking-section");
@@ -643,7 +636,6 @@ export default function AstrologerWebsite() {
                     }`}
                   type="date"
                   min={today}
-                  max={maxDate}
                   value={selectedDate}
                   onChange={(e) => {
                     setStatusMessage("");
@@ -651,11 +643,6 @@ export default function AstrologerWebsite() {
                     if (nextDate && nextDate < today) {
                       setSelectedDate("");
                       setDateError("Past dates are not allowed. Please select today or a future date.");
-                      return;
-                    }
-                    if (nextDate && nextDate > maxDate) {
-                      setSelectedDate("");
-                      setDateError("Bookings are only accepted up to 7 days in advance.");
                       return;
                     }
                     setDateError("");

@@ -19,9 +19,10 @@ export async function POST(request: NextRequest) {
     type: "invoice" | "reminder";
     amount: string;
     currency?: string;
+    note?: string;
   };
 
-  const { date, slot, type, amount, currency } = body;
+  const { date, slot, type, amount, currency, note } = body;
 
   if (!date || !slot || !type || !amount) {
     return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     let emailResult;
     if (type === "invoice") {
-      emailResult = await sendInvoiceEmail(booking, amount, currency);
+      emailResult = await sendInvoiceEmail(booking, amount, currency, note);
     } else {
       emailResult = await sendPaymentReminderEmail(booking, amount, currency);
     }

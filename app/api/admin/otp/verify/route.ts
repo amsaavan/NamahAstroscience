@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
     ADMIN_SESSION_COOKIE,
     isAuthConfigValid,
+    OTP_COOKIE,
     signSessionJwt,
     verifyOtp,
 } from "@/lib/admin-auth";
@@ -23,7 +24,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "OTP is required." }, { status: 400 });
     }
 
-    if (!verifyOtp(otp)) {
+    // Read the signed OTP token from the cookie set during /send
+    const cookieValue = request.cookies.get(OTP_COOKIE)?.value ?? "";
+
+    if (!verifyOtp(otp, cookieValue)) {
         return NextResponse.json(
             { error: "Invalid or expired OTP. Please request a new one." },
             { status: 401 }
@@ -32,6 +36,8 @@ export async function POST(request: NextRequest) {
 
     const token = signSessionJwt();
     const response = NextResponse.json({ success: true });
+
+    // Set admin session cookie
     response.cookies.set({
         name: ADMIN_SESSION_COOKIE,
         value: token,
@@ -40,5 +46,17 @@ export async function POST(request: NextRequest) {
         secure: process.env.NODE_ENV === "production",
         path: "/",
     });
+
+    // Clear the OTP cookie — it's single-use
+    response.cookies.set({
+        name: OTP_COOKIE,
+        value: "",
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 0,
+    });
+
     return response;
 }

@@ -8,6 +8,8 @@ import {
 import { ADMIN_SESSION_COOKIE, verifySessionJwt } from "@/lib/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
+export const dynamic = "force-dynamic";
+
 function isAdminAuthed(request: NextRequest): boolean {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";
   return verifySessionJwt(token);
@@ -66,14 +68,7 @@ function todayLocalDateString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function maxBookingDateString() {
-  const d = new Date();
-  d.setDate(d.getDate() + 7);
-  const yyyy = String(d.getFullYear());
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
+
 
 function isSlotInPast(slot: string): boolean {
   // Always returns false as we are removing specific time slots
@@ -139,12 +134,6 @@ export async function POST(request: NextRequest) {
   if (booking.date < todayLocalDateString()) {
     return NextResponse.json(
       { error: "Past dates are not allowed." },
-      { status: 400 }
-    );
-  }
-  if (booking.date > maxBookingDateString()) {
-    return NextResponse.json(
-      { error: "Bookings are only accepted up to 7 days in advance." },
       { status: 400 }
     );
   }

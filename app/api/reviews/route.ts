@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createReview, deleteReview, listReviews } from "@/lib/review-store";
 
+export const dynamic = "force-dynamic";
+
 type ReviewPayload = {
     name: string;
     location?: string;

@@ -117,9 +117,21 @@ export async function sendBookingConfirmation(
               </tr>
             </table>
 
-            <p style="font-size:13px;color:#6b7280;text-align:center;margin:0;">
+            <p style="font-size:13px;color:#6b7280;text-align:center;margin:0 0 28px;">
               Thank you for choosing Namah Astroscience. We look forward to guiding you.
             </p>
+
+            <!-- Review Request -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(244,196,48,0.07),rgba(122,0,0,0.08));border-radius:14px;border:1px solid rgba(244,196,48,0.25);margin-bottom:8px;overflow:hidden;">
+              <tr>
+                <td style="padding:22px 28px;text-align:center;">
+                  <p style="margin:0 0 6px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                  <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#f4c430;letter-spacing:0.5px;">Please give us your valuable review after consultation</p>
+                  <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;line-height:1.6;">Your honest words inspire us and help fellow seekers find clarity through Vedic guidance. It takes just a minute — and it means the world to us.</p>
+                  <a href="https://namahastroscience.com/#reviews" style="display:inline-block;background:#f4c430;color:#0d1526;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:12px 28px;border-radius:50px;text-decoration:none;">Leave a Review ✦</a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
 
@@ -146,6 +158,10 @@ export async function sendBookingConfirmation(
     "Jinesh will reach out on WhatsApp to confirm.",
     "WhatsApp: +91 79849 60585",
     "Email: namahastroscience@gmail.com",
+    "",
+    "--- Please give us your valuable review after consultation ---",
+    "Your honest feedback helps us serve you and others better.",
+    "Leave a review at: https://namahastroscience.com/#reviews",
     "",
     "Thank you,",
     "Namah Astroscience",
@@ -368,9 +384,20 @@ export async function sendAdminOtp(otp: string): Promise<SendOutcome> {
 export async function sendInvoiceEmail(
   booking: BookingRecord,
   amount: string,
-  currency: string = "₹"
+  currency: string = "₹",
+  note: string = ""
 ): Promise<SendOutcome> {
   if (!hasSmtpConfig()) return { sent: false, reason: "smtp_not_configured" };
+
+  const noteBlock = note.trim() ? `
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f1829;border-radius:12px;border:1px solid #1e2a45;margin-bottom:28px;overflow:hidden;">
+              <tr><td style="padding:14px 24px;border-bottom:1px solid #1e2a45;">
+                <span style="font-size:11px;color:#f4c430;text-transform:uppercase;letter-spacing:2px;font-weight:700;">✦ A note from Namahastroscience team</span>
+              </td></tr>
+              <tr><td style="padding:20px 24px;">
+                <p style="margin:0;font-size:14px;color:#e2e8f0;line-height:1.75;white-space:pre-wrap;">${note.trim()}</p>
+              </td></tr>
+            </table>` : "";
 
   const html = `
 <!DOCTYPE html>
@@ -416,7 +443,9 @@ export async function sendInvoiceEmail(
               </tr>
             </table>
 
-            <div style="background:rgba(244,196,48,0.05);border-radius:12px;padding:24px;border:1px dashed #f4c430;margin-bottom:32px;">
+            ${noteBlock}
+
+            <div style="background:rgba(244,196,48,0.05);border-radius:12px;padding:24px;border:1px dashed #f4c430;margin-bottom:28px;">
               <p style="margin:0 0 12px;font-size:14px;color:#e2e8f0;font-weight:600;">Payment Instructions:</p>
               <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
                 Please complete the payment via UPI or Bank Transfer. You can scan the QR code shared on WhatsApp or use our registered mobile number: 
@@ -424,9 +453,21 @@ export async function sendInvoiceEmail(
               </p>
             </div>
 
-            <p style="font-size:13px;color:#6b7280;text-align:center;margin:0;">
+            <p style="font-size:13px;color:#6b7280;text-align:center;margin:0 0 28px;">
               Once paid, kindly share a screenshot on WhatsApp for our records.
             </p>
+
+            <!-- Review Request -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(244,196,48,0.07),rgba(122,0,0,0.08));border-radius:14px;border:1px solid rgba(244,196,48,0.25);overflow:hidden;">
+              <tr>
+                <td style="padding:22px 28px;text-align:center;">
+                  <p style="margin:0 0 6px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                  <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#f4c430;letter-spacing:0.5px;">Please share your review with us</p>
+                  <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;line-height:1.6;">We hope the consultation brought you clarity and direction. Your experience — shared in your own words — helps other seekers trust their journey with Vedic wisdom. We would be truly honoured to hear from you.</p>
+                  <a href="https://namahastroscience.com/#reviews" style="display:inline-block;background:#f4c430;color:#0d1526;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:12px 28px;border-radius:50px;text-decoration:none;">Share Your Experience ✦</a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
@@ -440,13 +481,15 @@ export async function sendInvoiceEmail(
 </body>
 </html>`;
 
+  const noteText = note.trim() ? `\n\nA note from Namahastroscience team:\n${note.trim()}` : "";
+
   try {
     const transporter = await getTransporter();
     await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: booking.email,
       subject: `Invoice for your consultation — Namah Astroscience`,
-      text: `Hi ${booking.fullName},\n\nYour consultation on ${booking.date} is completed. Amount due: ${currency} ${amount}.\nPlease complete the payment via WhatsApp: +91 79849 60585.\n\nThank you,\nNamah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nYour consultation on ${booking.date} is completed. Amount due: ${currency} ${amount}.${noteText}\n\nPlease complete the payment via WhatsApp: +91 79849 60585.\n\nPlease share your review with us — your words help us guide others on their journey:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
       html,
     });
     return { sent: true };
@@ -494,9 +537,21 @@ export async function sendPaymentReminderEmail(
               If you have already made the payment, please disregard this email. Otherwise, kindly complete the transaction at your earliest convenience.
             </p>
 
-            <p style="margin:0;font-size:14px;color:#e2e8f0;text-align:center;">
+            <p style="margin:0 0 28px;font-size:14px;color:#e2e8f0;text-align:center;">
               📱 WhatsApp support: <a href="https://wa.me/917984960585" style="color:#25D366;">+91 79849 60585</a>
             </p>
+
+            <!-- Review Request -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,rgba(244,196,48,0.07),rgba(122,0,0,0.08));border-radius:14px;border:1px solid rgba(244,196,48,0.25);overflow:hidden;">
+              <tr>
+                <td style="padding:22px 28px;text-align:center;">
+                  <p style="margin:0 0 6px;font-size:18px;">⭐⭐⭐⭐⭐</p>
+                  <p style="margin:0 0 10px;font-size:14px;font-weight:700;color:#f4c430;letter-spacing:0.5px;">Please share your review with us</p>
+                  <p style="margin:0 0 16px;font-size:13px;color:#9ca3af;line-height:1.6;">Every consultation is a step on a larger journey. If our guidance resonated with you, a short review from your heart goes a long way — for us, and for everyone who seeks clarity through the stars.</p>
+                  <a href="https://namahastroscience.com/#reviews" style="display:inline-block;background:#f4c430;color:#0d1526;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:12px 28px;border-radius:50px;text-decoration:none;">Share Your Experience ✦</a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>
@@ -511,7 +566,7 @@ export async function sendPaymentReminderEmail(
       from: process.env.SMTP_FROM,
       to: booking.email,
       subject: `Friendly Payment Reminder — Namah Astroscience`,
-      text: `Hi ${booking.fullName},\n\nThis is a friendly reminder for the pending payment of ${currency} ${amount} for your session on ${booking.date}.\n\nWhatsApp: +91 79849 60585.\n\nThank you,\nNamah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nThis is a friendly reminder for the pending payment of ${currency} ${amount} for your session on ${booking.date}.\n\nWhatsApp: +91 79849 60585.\n\nAlso, if you'd like to share your experience with us, we'd love to hear from you:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
       html,
     });
     return { sent: true };
