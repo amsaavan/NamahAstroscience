@@ -1756,6 +1756,34 @@ function InvoiceModal({
   );
 }
 
+function NotesModal({
+  booking,
+  onClose,
+}: {
+  booking: BookingRecord;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-2xl border border-[#d6c7b2] bg-white p-6 shadow-2xl">
+        <h3 className="text-xl font-bold text-[#7a1c1c] mb-4">Notes from {booking.fullName}</h3>
+        <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-xl bg-[#f9f4ec] p-4 text-[#5a1e1e] text-sm border border-[#efe4d6]">
+          {booking.notes}
+        </div>
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-[#7a1c1c] px-6 py-2 text-sm font-semibold text-[#f5efe6] hover:bg-[#5a1414] transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin Bookings Page ─────────────────────────────────────────────────────
 
 export default function AdminBookingsPage() {
@@ -1773,6 +1801,7 @@ export default function AdminBookingsPage() {
   const [invoiceBooking, setInvoiceBooking] = useState<BookingRecord | null>(
     null,
   );
+  const [noteBooking, setNoteBooking] = useState<BookingRecord | null>(null);
   const [remindingKey, setRemindingKey] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1921,11 +1950,21 @@ export default function AdminBookingsPage() {
                       {booking.whatsapp}
                     </a>
                   </td>
-                  <td
-                    className="px-4 py-3 align-middle max-w-[200px] truncate"
-                    title={booking.notes}
-                  >
-                    {booking.notes || "-"}
+                  <td className="px-4 py-3 align-middle max-w-[200px]">
+                    {booking.notes ? (
+                      <div className="flex items-center gap-2">
+                        <span className="truncate flex-1" title={booking.notes}>{booking.notes}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNoteBooking(booking)}
+                          className="shrink-0 rounded-md bg-[#efe4d6] px-2 py-1 text-[10px] font-bold text-[#7a1c1c] hover:bg-[#e8dac7] transition"
+                        >
+                          VIEW
+                        </button>
+                      </div>
+                    ) : (
+                      "-"
+                    )}
                   </td>
                   <td className="px-4 py-3 align-middle">
                     {new Date(booking.createdAt).toLocaleString()}
@@ -2155,6 +2194,13 @@ export default function AdminBookingsPage() {
           onInvoiceSent={(updated) => {
             setBookings(prev => prev.map(b => (b.date === updated.date && b.slot === updated.slot) ? updated : b));
           }}
+        />
+      )}
+
+      {noteBooking && (
+        <NotesModal
+          booking={noteBooking}
+          onClose={() => setNoteBooking(null)}
         />
       )}
 
