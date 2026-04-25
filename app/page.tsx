@@ -375,12 +375,14 @@ export default function AstrologerWebsite() {
   const [birthLon, setBirthLon] = useState<number>();
   const [birthTimezone, setBirthTimezone] = useState<string>();
 
-  const today = useMemo(() => {
+  const [today, setToday] = useState("");
+
+  useEffect(() => {
     const now = new Date();
     const yyyy = String(now.getFullYear());
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+    setToday(`${yyyy}-${mm}-${dd}`);
   }, []);
 
 
