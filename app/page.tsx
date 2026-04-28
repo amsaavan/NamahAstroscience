@@ -285,7 +285,7 @@ function ReviewsSection() {
                 />
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
-                  placeholder="City (optional)"
+                  placeholder="City"
                   value={rLocation}
                   onChange={(e) => setRLocation(e.target.value)}
                 />

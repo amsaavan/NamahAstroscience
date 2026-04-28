@@ -251,7 +251,7 @@ export default function AdminReviewsPage() {
                                     <input type="text" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.country || ""} onChange={(e) => setEditForm({...editForm, country: e.target.value})} />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-[#6b4c3b]">City / Location (Optional)</label>
+                                    <label className="block text-sm font-semibold text-[#6b4c3b]">City / Location</label>
                                     <input type="text" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.location || ""} onChange={(e) => setEditForm({...editForm, location: e.target.value})} />
                                 </div>
                                 <div>
