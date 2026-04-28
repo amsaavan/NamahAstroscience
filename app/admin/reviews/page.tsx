@@ -9,8 +9,10 @@ type ReviewRecord = {
     id: string;
     name: string;
     location: string;
+    country: string;
     rating: number;
     review: string;
+    reply?: string;
     createdAt: string;
 };
 
@@ -24,6 +26,36 @@ export default function AdminReviewsPage() {
     const [error, setError] = useState("");
     const [deletingId, setDeletingId] = useState("");
     const [loggingOut, setLoggingOut] = useState(false);
+
+    const [editingReview, setEditingReview] = useState<ReviewRecord | null>(null);
+    const [editForm, setEditForm] = useState<Partial<ReviewRecord>>({});
+    const [updating, setUpdating] = useState(false);
+
+    const handleEditClick = (r: ReviewRecord) => {
+        setEditingReview(r);
+        setEditForm({ ...r });
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingReview) return;
+        setUpdating(true);
+        setError("");
+        try {
+            const res = await fetch("/api/reviews", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editForm),
+            });
+            const data = await res.json();
+            if (!res.ok) { setError(data.error ?? "Update failed."); return; }
+            setReviews((prev) => prev.map((r) => r.id === editingReview.id ? data.review : r));
+            setEditingReview(null);
+        } catch {
+            setError("Update failed due to a network error.");
+        } finally {
+            setUpdating(false);
+        }
+    };
 
     const loadReviews = async () => {
         setLoading(true);
@@ -130,9 +162,9 @@ export default function AdminReviewsPage() {
                         <thead className="bg-[#efe4d6] text-[#3b2417]">
                             <tr>
                                 <th className="px-4 py-3">Reviewer</th>
-                                <th className="px-4 py-3">Location</th>
+                                <th className="px-4 py-3">Location / Country</th>
                                 <th className="px-4 py-3">Rating</th>
-                                <th className="px-4 py-3">Review</th>
+                                <th className="px-4 py-3">Review & Reply</th>
                                 <th className="px-4 py-3">Date</th>
                                 <th className="px-4 py-3">Action</th>
                             </tr>
@@ -156,7 +188,7 @@ export default function AdminReviewsPage() {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-[#6b4c3b]">
-                                            {review.location || "—"}
+                                            {review.location ? `${review.location}, ` : ""}{review.country}
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap">
                                             <span className="text-amber-500">
@@ -168,6 +200,11 @@ export default function AdminReviewsPage() {
                                         </td>
                                         <td className="px-4 py-3 max-w-xs">
                                             <p className="line-clamp-3 text-[#2b1b12]">{review.review}</p>
+                                            {review.reply && (
+                                                <div className="mt-2 text-xs border-l-2 border-green-500 pl-2 text-green-700 bg-green-50 p-1 rounded">
+                                                    <strong>Reply:</strong> <span className="line-clamp-2">{review.reply}</span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-[#6b4c3b]">
                                             {new Date(review.createdAt).toLocaleDateString("en-IN", {
@@ -175,14 +212,23 @@ export default function AdminReviewsPage() {
                                             })}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <button
-                                                type="button"
-                                                disabled={deletingId === review.id}
-                                                onClick={() => handleDelete(review.id)}
-                                                className="rounded-md bg-[#7a1c1c] px-3 py-1 text-xs text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70"
-                                            >
-                                                {deletingId === review.id ? "Deleting..." : "Delete"}
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditClick(review)}
+                                                    className="rounded-md border border-[#7a1c1c] px-3 py-1 text-xs text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={deletingId === review.id}
+                                                    onClick={() => handleDelete(review.id)}
+                                                    className="rounded-md bg-[#7a1c1c] px-3 py-1 text-xs text-[#f5efe6] transition hover:-translate-y-0.5 hover:bg-[#5a1414] disabled:opacity-70"
+                                                >
+                                                    {deletingId === review.id ? "Deleting..." : "Delete"}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -190,6 +236,46 @@ export default function AdminReviewsPage() {
                         </tbody>
                     </table>
                 </div>
+                
+                {editingReview && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                        <div className="w-full max-w-2xl rounded-2xl bg-[#f5efe6] p-6 shadow-2xl">
+                            <h2 className="text-2xl font-bold text-[#7a1c1c] mb-4">Edit Review</h2>
+                            <div className="grid grid-cols-2 gap-4 mb-4 text-[#2b1b12]">
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#6b4c3b]">Name</label>
+                                    <input type="text" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.name || ""} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#6b4c3b]">Country</label>
+                                    <input type="text" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.country || ""} onChange={(e) => setEditForm({...editForm, country: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#6b4c3b]">City / Location (Optional)</label>
+                                    <input type="text" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.location || ""} onChange={(e) => setEditForm({...editForm, location: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-[#6b4c3b]">Rating (1-5)</label>
+                                    <input type="number" min="1" max="5" className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.rating || 5} onChange={(e) => setEditForm({...editForm, rating: Number(e.target.value)})} />
+                                </div>
+                            </div>
+                            <div className="mb-4 text-[#2b1b12]">
+                                <label className="block text-sm font-semibold text-[#6b4c3b]">Review Text</label>
+                                <textarea rows={3} className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c]" value={editForm.review || ""} onChange={(e) => setEditForm({...editForm, review: e.target.value})}></textarea>
+                            </div>
+                            <div className="mb-6 text-[#2b1b12]">
+                                <label className="block text-sm font-semibold text-[#6b4c3b]">Admin Reply</label>
+                                <textarea rows={3} className="w-full rounded border border-[#d6c7b2] p-2 mt-1 bg-white outline-none focus:border-[#7a1c1c] placeholder:text-gray-400" placeholder="Type an official response to this review..." value={editForm.reply || ""} onChange={(e) => setEditForm({...editForm, reply: e.target.value})}></textarea>
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button type="button" onClick={() => setEditingReview(null)} className="rounded-md border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] hover:bg-white transition-colors">Cancel</button>
+                                <button type="button" onClick={handleSaveEdit} disabled={updating} className="rounded-md bg-[#7a1c1c] px-4 py-2 text-sm text-white hover:bg-[#5a1414] disabled:opacity-70 transition-colors">
+                                    {updating ? "Saving..." : "Save Changes"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </main>
     );

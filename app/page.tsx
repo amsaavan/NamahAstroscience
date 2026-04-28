@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2, Globe } from "lucide-react";
+import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2, Globe, X } from "lucide-react";
 import { LocationSearch } from "@/components/location-search";
 
 const DAILY_SLOTS = (() => {
@@ -104,8 +104,10 @@ type ReviewRecord = {
   id: string;
   name: string;
   location: string;
+  country: string;
   rating: number;
   review: string;
+  reply?: string;
   createdAt: string;
 };
 
@@ -145,11 +147,11 @@ function StarPicker({
   );
 }
 
-function ReviewCard({ review }: { review: ReviewRecord }) {
+function ReviewCard({ review, isStatic = false }: { review: ReviewRecord, isStatic?: boolean }) {
   return (
-    <div className="w-[320px] md:w-[400px] flex-shrink-0 px-3">
-      <Card className="h-full rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-none">
-        <CardContent className="flex h-full flex-col justify-between space-y-4 p-6">
+    <div className={`${isStatic ? "w-full h-full" : "w-[320px] md:w-[400px] flex-shrink-0"} px-3`}>
+      <Card className="h-full rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-none flex flex-col">
+        <CardContent className="flex h-full flex-col flex-1 space-y-4 p-6">
           <div className="flex gap-1">
             {Array.from({ length: 5 }).map((_, i) => (
               <span
@@ -164,7 +166,15 @@ function ReviewCard({ review }: { review: ReviewRecord }) {
           <p className="font-body flex-1 text-sm leading-relaxed text-white">
             &ldquo;{review.review}&rdquo;
           </p>
-          <div className="flex items-center gap-3 border-t border-[var(--tokyo-line)] pt-4">
+
+          {review.reply && (
+            <div className="mt-4 rounded-lg bg-[var(--tokyo-bg)]/60 border border-[var(--tokyo-line)] p-3">
+              <p className="font-body text-[10px] uppercase tracking-[0.1em] text-[#f4c430] mb-1">Response from Astrologer</p>
+              <p className="font-body text-xs leading-relaxed text-white/80">{review.reply}</p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 border-t border-[var(--tokyo-line)] pt-4 mt-auto">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--tokyo-neon)]/15 text-sm font-bold text-[var(--tokyo-neon)]">
               {review.name.charAt(0).toUpperCase()}
             </div>
@@ -172,11 +182,9 @@ function ReviewCard({ review }: { review: ReviewRecord }) {
               <p className="font-body text-sm font-semibold text-[var(--tokyo-text)]">
                 {review.name}
               </p>
-              {review.location && (
-                <p className="font-body text-xs text-white">
-                  {review.location}
-                </p>
-              )}
+              <p className="font-body text-xs text-white">
+                {review.location ? `${review.location}, ` : ""}{review.country}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -192,11 +200,13 @@ function ReviewsSection() {
   // Form state
   const [rName, setRName] = useState("");
   const [rLocation, setRLocation] = useState("");
+  const [rCountry, setRCountry] = useState("");
   const [rRating, setRRating] = useState(5);
   const [rText, setRText] = useState("");
   const [rStatus, setRStatus] = useState("");
   const [rSubmitting, setRSubmitting] = useState(false);
   const [rSuccess, setRSuccess] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   useEffect(() => {
     fetch("/api/reviews")
@@ -209,6 +219,7 @@ function ReviewsSection() {
   const handleSubmit = async () => {
     setRStatus("");
     if (!rName.trim()) { setRStatus("Please enter your name."); return; }
+    if (!rCountry.trim()) { setRStatus("Please enter your country."); return; }
     if (!rText.trim()) { setRStatus("Please write your review."); return; }
     if (rRating < 1) { setRStatus("Please select a star rating."); return; }
 
@@ -217,12 +228,12 @@ function ReviewsSection() {
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: rName, location: rLocation, rating: rRating, review: rText }),
+        body: JSON.stringify({ name: rName, location: rLocation, country: rCountry, rating: rRating, review: rText }),
       });
       const data = (await res.json()) as ReviewPostResponse;
       if (!res.ok) { setRStatus(data.error ?? "Failed to submit review."); return; }
       if (data.review) setReviews((prev) => [data.review!, ...prev]);
-      setRName(""); setRLocation(""); setRRating(5); setRText("");
+      setRName(""); setRLocation(""); setRCountry(""); setRRating(5); setRText("");
       setRSuccess(true);
       setTimeout(() => setRSuccess(false), 4000);
     } catch {
@@ -233,7 +244,7 @@ function ReviewsSection() {
   };
 
   return (
-    <section className="relative z-10 border-t border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16 overflow-hidden">
+    <section id="reviews" className={`relative border-t border-[var(--tokyo-line)] bg-[#090f1d] px-6 py-16 overflow-hidden ${showAllReviews ? "z-[100]" : "z-10"}`}>
       <RedStarLayer prefix="rvw" />
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10">
         <h2 className="font-display text-center text-6xl text-[var(--tokyo-neon)] md:text-7xl">Reviews</h2>
@@ -259,7 +270,7 @@ function ReviewsSection() {
           <Card className="rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)]">
             <CardContent className="space-y-4 p-6 md:p-8">
               <h3 className="font-display text-3xl text-[var(--tokyo-neon)]">Leave a Review</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="Your Name"
@@ -268,7 +279,13 @@ function ReviewsSection() {
                 />
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
-                  placeholder="City / Location (optional)"
+                  placeholder="Country"
+                  value={rCountry}
+                  onChange={(e) => setRCountry(e.target.value)}
+                />
+                <Input
+                  className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
+                  placeholder="City (optional)"
                   value={rLocation}
                   onChange={(e) => setRLocation(e.target.value)}
                 />
@@ -347,7 +364,40 @@ function ReviewsSection() {
           )}
         </div>
 
+        <div className="mt-12 flex justify-center">
+          <Button
+            onClick={() => setShowAllReviews(true)}
+            className="neo-btn font-body !rounded-2xl !border !border-[var(--tokyo-neon)] px-8 py-6 text-sm font-bold uppercase tracking-[0.18em] shadow-[0_0_10px_rgba(244,196,48,0.15)] bg-[#090f1d] hover:bg-[var(--tokyo-neon)]/10 text-[var(--tokyo-neon)]"
+          >
+            <span>View All Reviews</span>
+          </Button>
+        </div>
+
       </motion.div>
+
+      {showAllReviews && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-6xl max-h-full flex flex-col overflow-hidden rounded-3xl border border-[var(--tokyo-line)] bg-[#090f1d] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[var(--tokyo-line)] p-6 shrink-0 bg-[var(--tokyo-panel)]">
+              <h2 className="font-display text-3xl md:text-4xl text-[var(--tokyo-neon)]">All Reviews</h2>
+              <button 
+                onClick={() => setShowAllReviews(false)}
+                className="rounded-full p-2 text-white hover:bg-white/10 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-[#090f1d]">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mx-auto max-w-6xl">
+                {reviews.map((r) => (
+                  <ReviewCard key={r.id} review={r} isStatic />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }
@@ -410,6 +460,7 @@ export default function AstrologerWebsite() {
               alt="Namah Astroscience Logo"
               width={54}
               height={54}
+              priority={true}
               className="rounded-md border border-[var(--tokyo-line)]"
             />
             <div>
@@ -429,12 +480,7 @@ export default function AstrologerWebsite() {
       <section className="relative z-10 w-full overflow-hidden px-6 pb-20 pt-24">
         <RedStarLayer prefix="hero" />
         <div className="mx-auto max-w-6xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="relative"
-          >
+          <div className="relative">
 
           <div className="pointer-events-none absolute left-4 top-16 hidden text-3xl text-[var(--star-white)]/85 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)] md:block">
             ✧
@@ -469,7 +515,7 @@ export default function AstrologerWebsite() {
               <span>Book Consultation</span>
             </Button>
           </div>
-        </motion.div>
+          </div>
         </div>
       </section>
 

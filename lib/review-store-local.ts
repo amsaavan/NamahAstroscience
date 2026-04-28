@@ -5,8 +5,10 @@ export type ReviewRecord = {
     id: string;
     name: string;
     location: string;
+    country: string;
     rating: number;
     review: string;
+    reply?: string;
     createdAt: string;
 };
 
@@ -41,7 +43,7 @@ export async function listReviews(): Promise<ReviewRecord[]> {
 }
 
 export async function createReview(
-    record: Omit<ReviewRecord, "id" | "createdAt">
+    record: Omit<ReviewRecord, "id" | "createdAt" | "reply">
 ): Promise<ReviewRecord> {
     const run = async () => {
         const store = await readStore();
@@ -53,6 +55,24 @@ export async function createReview(
         store.push(newReview);
         await writeStore(store);
         return newReview;
+    };
+    const next = writeQueue.then(run);
+    writeQueue = next.then(() => undefined, () => undefined);
+    return next;
+}
+
+export async function updateReview(
+    id: string,
+    updates: Partial<Omit<ReviewRecord, "id" | "createdAt">>
+): Promise<ReviewRecord | null> {
+    const run = async () => {
+        const store = await readStore();
+        const index = store.findIndex((r) => r.id === id);
+        if (index === -1) return null;
+        const updatedReview = { ...store[index], ...updates };
+        store[index] = updatedReview;
+        await writeStore(store);
+        return updatedReview;
     };
     const next = writeQueue.then(run);
     writeQueue = next.then(() => undefined, () => undefined);
