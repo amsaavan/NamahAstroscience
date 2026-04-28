@@ -73,12 +73,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const updates: Partial<{ name: string; location: string; country: string; rating: number; review: string; reply: string }> = {};
-    if (body.name !== undefined) updates.name = body.name.trim();
-    if (body.location !== undefined) updates.location = body.location.trim();
-    if (body.country !== undefined) updates.country = body.country.trim();
+    if (typeof body.name === "string") updates.name = body.name.trim();
+    if (typeof body.location === "string") updates.location = body.location.trim();
+    if (typeof body.country === "string") updates.country = body.country.trim();
     if (body.rating !== undefined) updates.rating = Number(body.rating);
-    if (body.review !== undefined) updates.review = body.review.trim();
-    if (body.reply !== undefined) updates.reply = body.reply.trim();
+    if (typeof body.review === "string") updates.review = body.review.trim();
+    if (typeof body.reply === "string") updates.reply = body.reply.trim();
+    else if (body.reply === null) updates.reply = "";
 
     try {
         const updated = await updateReview(id, updates);
