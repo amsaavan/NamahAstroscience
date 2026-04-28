@@ -50,8 +50,8 @@ export default function AdminReviewsPage() {
             if (!res.ok) { setError(data.error ?? "Update failed."); return; }
             setReviews((prev) => prev.map((r) => r.id === editingReview.id ? data.review : r));
             setEditingReview(null);
-        } catch {
-            setError("Update failed due to a network error.");
+        } catch (err: any) {
+            setError("Update failed due to a network error: " + (err.message || String(err)));
         } finally {
             setUpdating(false);
         }
