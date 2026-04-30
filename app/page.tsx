@@ -178,13 +178,23 @@ function ReviewCard({ review, isStatic = false }: { review: ReviewRecord, isStat
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--tokyo-neon)]/15 text-sm font-bold text-[var(--tokyo-neon)]">
               {review.name.charAt(0).toUpperCase()}
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="font-body text-sm font-semibold text-[var(--tokyo-text)]">
                 {review.name}
               </p>
               <p className="font-body text-xs text-white">
                 {review.location ? `${review.location}, ` : ""}{review.country}
               </p>
+              {review.createdAt && (
+                <p className="font-body text-[10px] text-white/40 mt-0.5 flex items-center gap-1" suppressHydrationWarning>
+                  <CalendarDays className="h-3 w-3 inline-block" />
+                  {new Date(review.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -220,6 +230,7 @@ function ReviewsSection() {
     setRStatus("");
     if (!rName.trim()) { setRStatus("Please enter your name."); return; }
     if (!rCountry.trim()) { setRStatus("Please enter your country."); return; }
+    if (!rLocation.trim()) { setRStatus("Please enter your city."); return; }
     if (!rText.trim()) { setRStatus("Please write your review."); return; }
     if (rRating < 1) { setRStatus("Please select a star rating."); return; }
 
@@ -276,18 +287,21 @@ function ReviewsSection() {
                   placeholder="Your Name"
                   value={rName}
                   onChange={(e) => setRName(e.target.value)}
+                  suppressHydrationWarning
                 />
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="Country"
                   value={rCountry}
                   onChange={(e) => setRCountry(e.target.value)}
+                  suppressHydrationWarning
                 />
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
                   placeholder="City"
                   value={rLocation}
                   onChange={(e) => setRLocation(e.target.value)}
+                  suppressHydrationWarning
                 />
               </div>
               <div className="space-y-1">
@@ -302,6 +316,7 @@ function ReviewsSection() {
                 rows={4}
                 value={rText}
                 onChange={(e) => setRText(e.target.value)}
+                suppressHydrationWarning
               />
               {rStatus && <p className="font-body text-sm text-red-400">{rStatus}</p>}
               {rSuccess && <p className="font-body text-sm text-[var(--tokyo-neon)]">✓ Thank you! Your review has been posted.</p>}
@@ -309,6 +324,7 @@ function ReviewsSection() {
                 className="neo-btn font-body w-full !rounded-2xl !border !border-[var(--tokyo-neon)] py-5 text-sm font-semibold uppercase tracking-[0.18em]"
                 disabled={rSubmitting}
                 onClick={handleSubmit}
+                suppressHydrationWarning
               >
                 <span>{rSubmitting ? "Posting..." : "Post Review"}</span>
               </Button>
@@ -408,6 +424,29 @@ export default function AstrologerWebsite() {
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [whatsapp, setWhatsapp] = useState("");
+
+  // Max subscriber digits per country (excluding country code), per ITU-T E.164
+  const PHONE_MAX_LENGTH: Record<string, number> = {
+    "+91": 10,  // India
+    "+1": 10,   // USA
+    "+44": 10,  // UK
+    "+971": 9,  // UAE
+    "+61": 9,   // Australia
+    "+1-CA": 10, // Canada
+    "+65": 8,   // Singapore
+    "+60": 10,  // Malaysia
+    "+64": 9,   // New Zealand
+    "+27": 9,   // South Africa
+    "+49": 11,  // Germany
+    "+33": 9,   // France
+    "+81": 10,  // Japan
+    "+86": 11,  // China
+    "+92": 10,  // Pakistan
+    "+880": 10, // Bangladesh
+    "+94": 9,   // Sri Lanka
+    "+977": 10, // Nepal
+  };
+  const phoneMaxLen = PHONE_MAX_LENGTH[countryCode] ?? 12;
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string>("");
@@ -616,7 +655,7 @@ export default function AstrologerWebsite() {
         </div>
       </section>
 
-      <section id="booking-section" className="relative z-10 px-6 py-20 overflow-hidden">
+      <section id="booking-section" className="relative z-10 px-4 sm:px-6 py-16 sm:py-20 overflow-hidden">
         <RedStarLayer prefix="sch" />
         <div className="relative z-10">
           <h2 className="font-display text-center text-4xl sm:text-6xl text-[var(--tokyo-neon)] md:text-7xl">
@@ -624,7 +663,7 @@ export default function AstrologerWebsite() {
           </h2>
         <div className="mx-auto mt-10 max-w-3xl">
           <Card className="rounded-2xl border border-[var(--tokyo-line)] bg-[var(--tokyo-panel)] shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-            <CardContent className="space-y-6 p-8 md:p-10">
+            <CardContent className="space-y-5 sm:space-y-6 p-6 sm:p-8 md:p-10">
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
@@ -641,11 +680,11 @@ export default function AstrologerWebsite() {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-row gap-3 sm:gap-4">
                 <select
-                  className="tokyo-control tokyo-select font-body shrink-0 rounded-xl border border-[var(--tokyo-line)] px-3 py-3 text-sm outline-none w-full sm:w-[110px]"
+                  className="tokyo-control tokyo-select font-body shrink-0 rounded-xl border border-[var(--tokyo-line)] px-3 h-11 text-sm outline-none w-[100px] sm:w-[110px]"
                   value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
+                  onChange={(e) => { setCountryCode(e.target.value); setWhatsapp(""); }}
                 >
                   <option value="+91">🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
@@ -667,11 +706,12 @@ export default function AstrologerWebsite() {
                   <option value="+977">🇳🇵 +977</option>
                 </select>
                 <Input
-                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white/60"
-                  placeholder="WhatsApp Number"
+                  className="tokyo-control font-body flex-1 border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white h-11"
+                  placeholder={`WhatsApp Number (${phoneMaxLen} digits)`}
                   inputMode="tel"
+                  maxLength={phoneMaxLen}
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ""))}
+                  onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, phoneMaxLen))}
                 />
               </div>
 
@@ -679,24 +719,32 @@ export default function AstrologerWebsite() {
                 <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
                   Choose a Date
                 </label>
-                <Input
-                  className={`tokyo-control font-body border-[var(--tokyo-line)] transition-colors ${dateError ? "border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.35)]" : ""
-                    }`}
-                  type="date"
-                  min={today}
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setStatusMessage("");
-                    const nextDate = e.target.value;
-                    if (nextDate && nextDate < today) {
-                      setSelectedDate("");
-                      setDateError("Past dates are not allowed. Please select today or a future date.");
-                      return;
-                    }
-                    setDateError("");
-                    setSelectedDate(nextDate);
-                  }}
-                />
+                <div className="relative flex items-center w-full">
+                  <Input
+                    className={`tokyo-control font-body border-[var(--tokyo-line)] transition-colors w-full ${
+                      dateError ? "border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.35)]" : ""
+                    } ${!selectedDate ? "mobile-date-empty" : "text-[var(--tokyo-text)]"}`}
+                    type="date"
+                    min={today}
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setStatusMessage("");
+                      const nextDate = e.target.value;
+                      if (nextDate && nextDate < today) {
+                        setSelectedDate("");
+                        setDateError("Past dates are not allowed. Please select today or a future date.");
+                        return;
+                      }
+                      setDateError("");
+                      setSelectedDate(nextDate);
+                    }}
+                  />
+                  {!selectedDate && (
+                    <span className="pointer-events-none absolute left-3 text-sm text-white font-body mobile-date-span">
+                      DD-MM-YYYY
+                    </span>
+                  )}
+                </div>
                 {dateError && (
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
@@ -713,30 +761,44 @@ export default function AstrologerWebsite() {
 
 
               {/* Birth Details Section */}
-              <div className="rounded-xl border border-[var(--tokyo-line)] p-5 space-y-4" style={{ background: 'rgba(244,196,48,0.04)' }}>
+              <div className="rounded-xl border border-[var(--tokyo-line)] p-4 sm:p-5 space-y-4" style={{ background: 'rgba(244,196,48,0.04)' }}>
                 <div>
-                  <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details <span className="normal-case text-white tracking-normal">(Optional — for Kundali chart)</span></p>
+                  <p className="font-body text-xs uppercase tracking-[0.16em] text-[var(--tokyo-neon)] mb-1">🔮 Birth Details</p>
                   <p className="font-body text-xs text-white">Share your birth details to allow a personalised Kundali reading.</p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-2">
                   <div className="space-y-1">
                     <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Date of Birth</label>
-                    <Input
-                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
-                      type="date"
-                      max={today}
-                      value={birthDate}
-                      onChange={(e) => setBirthDate(e.target.value)}
-                    />
+                    <div className="relative flex items-center w-full">
+                      <Input
+                        className={`tokyo-control font-body border-[var(--tokyo-line)] w-full ${!birthDate ? "mobile-date-empty" : "text-[var(--tokyo-text)]"}`}
+                        type="date"
+                        max={today}
+                        value={birthDate}
+                        onChange={(e) => setBirthDate(e.target.value)}
+                      />
+                      {!birthDate && (
+                        <span className="pointer-events-none absolute left-3 text-sm text-white font-body mobile-date-span">
+                          DD-MM-YYYY
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="font-body block text-xs uppercase tracking-[0.14em] text-white">Time of Birth</label>
-                    <Input
-                      className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-[var(--tokyo-muted)]"
-                      type="time"
-                      value={birthTime}
-                      onChange={(e) => setBirthTime(e.target.value)}
-                    />
+                    <div className="relative flex items-center w-full">
+                      <Input
+                        className={`tokyo-control font-body border-[var(--tokyo-line)] w-full ${!birthTime ? "mobile-date-empty" : "text-[var(--tokyo-text)]"}`}
+                        type="time"
+                        value={birthTime}
+                        onChange={(e) => setBirthTime(e.target.value)}
+                      />
+                      {!birthTime && (
+                        <span className="pointer-events-none absolute left-3 text-sm text-white font-body mobile-date-span">
+                          HH:MM
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="grid gap-4 grid-cols-1">
@@ -763,7 +825,7 @@ export default function AstrologerWebsite() {
 
               <Textarea
                 className="tokyo-control font-body border-[var(--tokyo-line)] text-[var(--tokyo-text)] placeholder:text-white"
-                placeholder="Your Question / Notes (Optional)"
+                placeholder="Your Question / Notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -780,9 +842,9 @@ export default function AstrologerWebsite() {
                 onClick={async () => {
                   setStatusMessage("");
 
-                  if (!fullName.trim() || !email.trim() || !whatsapp.trim()) {
+                  if (!fullName.trim() || !email.trim() || !whatsapp.trim() || !birthDate || !birthTime || !birthCity.trim() || !notes.trim()) {
                     setStatusMessage(
-                      "Please enter your name, email, and WhatsApp number."
+                      "Please fill in all the details, including your birth information and question/notes."
                     );
                     return;
                   }

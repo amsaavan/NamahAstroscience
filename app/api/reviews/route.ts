@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
     if (!country) {
         return NextResponse.json({ error: "Country is required." }, { status: 400 });
     }
+    if (!location) {
+        return NextResponse.json({ error: "City/Town is required." }, { status: 400 });
+    }
     if (!review) {
         return NextResponse.json(
             { error: "Review text is required." },
