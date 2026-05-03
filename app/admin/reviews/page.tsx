@@ -123,6 +123,13 @@ export default function AdminReviewsPage() {
                         </button>
                         <button
                             type="button"
+                            onClick={() => router.push("/admin/content")}
+                            className="rounded-lg border border-[#7a1c1c] px-4 py-2 text-sm text-[#7a1c1c] transition hover:-translate-y-0.5 hover:bg-[#7a1c1c] hover:text-[#f5efe6]"
+                        >
+                            Site Content
+                        </button>
+                        <button
+                            type="button"
                             disabled={loggingOut}
                             onClick={async () => {
                                 setLoggingOut(true);

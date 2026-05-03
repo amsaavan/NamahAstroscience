@@ -420,6 +420,17 @@ function ReviewsSection() {
 
 export default function AstrologerWebsite() {
 
+  const [siteContent, setSiteContent] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/content")
+      .then(res => res.json())
+      .then(data => {
+        if (data.content) setSiteContent(data.content);
+      })
+      .catch(err => console.error("Failed to fetch content:", err));
+  }, []);
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
@@ -487,7 +498,10 @@ export default function AstrologerWebsite() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[var(--tokyo-bg)] text-[var(--tokyo-text)]">
+    <div 
+      className="relative min-h-screen overflow-x-hidden bg-[var(--tokyo-bg)] text-[var(--tokyo-text)]"
+      style={{ "--tokyo-neon": siteContent?.themeColor || "#f4c430" } as React.CSSProperties}
+    >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,#7A0000_0%,#5A0000_36%,#060B1A_78%)]" />
       <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,var(--tokyo-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--tokyo-line)_1px,transparent_1px)] [background-size:44px_44px]" />
 
@@ -539,12 +553,20 @@ export default function AstrologerWebsite() {
             <span className="absolute -inset-1 rounded-full bg-[radial-gradient(circle,#F4C430_0%,transparent_70%)] opacity-30 blur-[2px]" />
           </div>
           <h2 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-[clamp(4rem,12vw,8.2rem)] leading-[1.1] sm:leading-[0.9] tracking-[0.05em] sm:tracking-[0.07em] text-[var(--tokyo-neon)] drop-shadow-[0_0_16px_rgba(244,196,48,0.45)]">
-            <span className="block">Namah</span>
-            <span className="mt-1 sm:mt-2 block">Astroscience</span>
+            {siteContent ? (
+              <>
+                <span className="block">{siteContent.heroTitle.split(" ")[0]}</span>
+                <span className="mt-1 sm:mt-2 block">{siteContent.heroTitle.split(" ").slice(1).join(" ")}</span>
+              </>
+            ) : (
+              <>
+                <span className="block">Namah</span>
+                <span className="mt-1 sm:mt-2 block">Astroscience</span>
+              </>
+            )}
           </h2>
           <p className="font-body mt-6 max-w-xl text-sm sm:text-base uppercase tracking-[0.12em] text-white/90 md:text-lg">
-            Cosmic timing, high clarity, and direct life strategy. A modern
-            consultation flow with classic Vedic depth.
+            {siteContent ? siteContent.heroSubtitle : "Cosmic timing, high clarity, and direct life strategy. A modern consultation flow with classic Vedic depth."}
           </p>
           <div className="mt-8 flex justify-center">
             <Button
@@ -567,7 +589,7 @@ export default function AstrologerWebsite() {
           </h2>
           <p className="font-body mt-4 text-center text-xs sm:text-sm uppercase tracking-[0.14em] text-white/80">Areas of astrological guidance offered</p>
           {(() => {
-          const services = [
+          const services = siteContent?.services || [
             { title: "Health Issues", desc: "Early detection through planetary insight and chart analysis." },
             { title: "Business & Job", desc: "Timing and strategy for career moves and business decisions." },
             { title: "Study Guidance", desc: "Choosing the right stream and education path for success." },
@@ -578,7 +600,7 @@ export default function AstrologerWebsite() {
           ];
           return (
             <div className="mx-auto mt-10 max-w-6xl flex flex-wrap justify-center gap-6">
-              {services.map((s, i) => (
+              {services.map((s: any, i: number) => (
                 <div 
                   key={i} 
                   className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] xl:w-[calc(25%-18px)] flex"
@@ -624,24 +646,28 @@ export default function AstrologerWebsite() {
               <CardContent className="p-8 md:p-12 space-y-6">
                 <div>
                   <h3 className="font-display text-3xl text-[var(--tokyo-neon)] mb-3">Preface</h3>
-                  <p className="font-body text-base leading-relaxed text-white">
-                    I have been endowed with astrological knowledge by the grace of Almighty God. Astrology is{" "}
-                    <span className="text-red-400 font-semibold">not a miracle</span> but merely providing{" "}
-                    <span className="text-[var(--tokyo-neon)] font-semibold">clear guidance</span> and a way of living life. Each and{" "}
-                    <span className="text-red-400 font-semibold">every planet</span> has its own functions and is{" "}
-                    <span className="text-red-400 font-semibold">associated with human bodies</span>. Based on planetary positions, one can act accordingly — it is said to be{" "}
-                    <span className="text-[var(--tokyo-neon)] font-semibold">connected with science.</span>
-                  </p>
+                  {siteContent ? (
+                    <p className="font-body text-base leading-relaxed text-white" dangerouslySetInnerHTML={{ __html: siteContent.aboutPreface }} />
+                  ) : (
+                    <p className="font-body text-base leading-relaxed text-white">
+                      I have been endowed with astrological knowledge by the grace of Almighty God. Astrology is{" "}
+                      <span className="text-red-400 font-semibold">not a miracle</span> but merely providing{" "}
+                      <span className="text-[var(--tokyo-neon)] font-semibold">clear guidance</span> and a way of living life. Each and{" "}
+                      <span className="text-red-400 font-semibold">every planet</span> has its own functions and is{" "}
+                      <span className="text-red-400 font-semibold">associated with human bodies</span>. Based on planetary positions, one can act accordingly — it is said to be{" "}
+                      <span className="text-[var(--tokyo-neon)] font-semibold">connected with science.</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-display text-3xl text-[var(--tokyo-neon)] mb-4">With Horoscope Reading</h3>
                   <ul className="space-y-3">
-                    {[
+                    {(siteContent?.aboutPoints || [
                       "I can provide guidance on specific health precautions aligned with individual risk patterns, enabling early identification of potential issues before they develop into serious conditions. This includes recognizing vulnerable organs, monitoring emerging symptoms, and maintaining awareness of periods when the body is more susceptible, so that timely action and preventive attention can reduce long-term impact.",
                       "I suggest business ideas, according to your horoscope. Therefore, you can avert major losses of time, money and futile efforts.",
                       "I can suggest about better career and choosing the desired stream in education.",
                       "Providing suitable suggestions related to match making and marriage life.",
-                    ].map((point, i) => (
+                    ]).map((point: string, i: number) => (
                       <li key={i} className="flex items-start gap-3">
                         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--tokyo-neon)]" />
                         <p className="font-body text-base leading-relaxed text-white">{point}</p>

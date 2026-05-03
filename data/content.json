@@ -1,0 +1,42 @@
+{
+  "heroTitle": "Namah Astroscience",
+  "heroSubtitle": "Cosmic timing, high clarity, and direct life strategy. A modern consultation flow with classic Vedic depth. ",
+  "aboutPreface": "I have been endowed with astrological knowledge by the grace of Almighty God. Astrology is <span class=\"text-red-400 font-semibold\">not a miracle</span> but merely providing <span class=\"text-[var(--tokyo-neon)] font-semibold\">clear guidance</span> and a way of living life. Each and <span class=\"text-red-400 font-semibold\">every planet</span> has its own functions and is <span class=\"text-red-400 font-semibold\">associated with human bodies</span>. Based on planetary positions, one can act accordingly — it is said to be <span class=\"text-[var(--tokyo-neon)] font-semibold\">connected with science.</span>",
+  "aboutPoints": [
+    "I can provide guidance on specific health precautions aligned with individual risk patterns, enabling early identification of potential issues before they develop into serious conditions. This includes recognizing vulnerable organs, monitoring emerging symptoms, and maintaining awareness of periods when the body is more susceptible, so that timely action and preventive attention can reduce long-term impact.",
+    "I suggest business ideas, according to your horoscope. Therefore, you can avert major losses of time, money and futile efforts.",
+    "I can suggest about better career and choosing the desired stream in education.",
+    "Providing suitable suggestions related to match making and marriage life."
+  ],
+  "services": [
+    {
+      "title": "Health Issues",
+      "desc": "Early detection through planetary insight and chart analysis."
+    },
+    {
+      "title": "Business & Job",
+      "desc": "Timing and strategy for career moves and business decisions."
+    },
+    {
+      "title": "Study Guidance",
+      "desc": "Choosing the right stream and education path for success."
+    },
+    {
+      "title": "Income & Investment",
+      "desc": "Planning and timing investments based on your horoscope."
+    },
+    {
+      "title": "Marriage & Social",
+      "desc": "Match-making guidance and relationship compatibility."
+    },
+    {
+      "title": "Abroad Study & Job",
+      "desc": "Planetary factors for overseas education and employment."
+    },
+    {
+      "title": "Gemstone Suggestion",
+      "desc": "Personalised gemstone recommendations to strengthen planets."
+    }
+  ],
+  "themeColor": "#f4c430"
+}
