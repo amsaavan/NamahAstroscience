@@ -3,7 +3,9 @@ import { createReview, deleteReview, listReviews, updateReview } from "@/lib/rev
 import { ADMIN_SESSION_COOKIE, verifySessionJwt } from "@/lib/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
-export const dynamic = "force-dynamic";
+// Cache the reviews list for 30 seconds (ISR).
+// Reduces repeated Supabase queries on every page load.
+export const revalidate = 30;
 
 function isAdminAuthed(request: NextRequest): boolean {
     const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";

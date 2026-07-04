@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 
 import { motion } from "framer-motion";
@@ -71,6 +71,28 @@ function RedStarLayer({ prefix }: { prefix: string }) {
     </>
   );
 }
+
+// Defined at module level so it is never rebuilt during re-renders.
+const PHONE_MAX_LENGTH: Record<string, number> = {
+  "+91": 10,  // India
+  "+1": 10,   // USA
+  "+44": 10,  // UK
+  "+971": 9,  // UAE
+  "+61": 9,   // Australia
+  "+1-CA": 10, // Canada
+  "+65": 8,   // Singapore
+  "+60": 10,  // Malaysia
+  "+64": 9,   // New Zealand
+  "+27": 9,   // South Africa
+  "+49": 11,  // Germany
+  "+33": 9,   // France
+  "+81": 10,  // Japan
+  "+86": 11,  // China
+  "+92": 10,  // Pakistan
+  "+880": 10, // Bangladesh
+  "+94": 9,   // Sri Lanka
+  "+977": 10, // Nepal
+};
 
 function GoldStarLayer({ prefix }: { prefix: string }) {
   return (
@@ -427,27 +449,6 @@ export default function AstrologerWebsite() {
   const [countryCode, setCountryCode] = useState("+91");
   const [whatsapp, setWhatsapp] = useState("");
 
-  // Max subscriber digits per country (excluding country code), per ITU-T E.164
-  const PHONE_MAX_LENGTH: Record<string, number> = {
-    "+91": 10,  // India
-    "+1": 10,   // USA
-    "+44": 10,  // UK
-    "+971": 9,  // UAE
-    "+61": 9,   // Australia
-    "+1-CA": 10, // Canada
-    "+65": 8,   // Singapore
-    "+60": 10,  // Malaysia
-    "+64": 9,   // New Zealand
-    "+27": 9,   // South Africa
-    "+49": 11,  // Germany
-    "+33": 9,   // France
-    "+81": 10,  // Japan
-    "+86": 11,  // China
-    "+92": 10,  // Pakistan
-    "+880": 10, // Bangladesh
-    "+94": 9,   // Sri Lanka
-    "+977": 10, // Nepal
-  };
   const phoneMaxLen = PHONE_MAX_LENGTH[countryCode] ?? 12;
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -531,11 +532,11 @@ export default function AstrologerWebsite() {
       .catch(console.error);
   }, [selectedDate, siteContent]);
 
-  const toggleSlot = (slot: string) => {
-    setSelectedSlots(prev => 
+  const toggleSlot = useCallback((slot: string) => {
+    setSelectedSlots(prev =>
       prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot].sort()
     );
-  };
+  }, []);
 
   const scrollToBooking = () => {
     const section = document.getElementById("booking-section");

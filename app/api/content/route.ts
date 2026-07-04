@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getContent } from "@/lib/content-store";
 
-export const dynamic = "force-dynamic";
+// Cache the content response for 60 seconds (ISR).
+// Content changes rarely — this eliminates a Supabase call on every page load.
+export const revalidate = 60;
 
 export async function GET() {
   try {
