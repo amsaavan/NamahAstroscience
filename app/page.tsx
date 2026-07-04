@@ -8,18 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2, Globe, X } from "lucide-react";
+import { CalendarDays, Star, Phone, Mail, MessageCircle, AlertTriangle, CheckCircle2, Globe, X, Clock } from "lucide-react";
 import { LocationSearch } from "@/components/location-search";
-
-const DAILY_SLOTS = (() => {
-  const slots: string[] = [];
-  for (let minutes = 9 * 60; minutes <= 18 * 60; minutes += 60) {
-    const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
-    const mm = String(minutes % 60).padStart(2, "0");
-    slots.push(`${hh}:${mm}`);
-  }
-  return slots;
-})();
+import { DATE_PLACEHOLDER } from "@/lib/booking";
 
 type AvailabilityResponse = {
   bookedSlots?: string[];
@@ -460,6 +451,8 @@ export default function AstrologerWebsite() {
   const phoneMaxLen = PHONE_MAX_LENGTH[countryCode] ?? 12;
   const [notes, setNotes] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+  const [bookedSlotsCount, setBookedSlotsCount] = useState<Record<string, number>>({});
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateError, setDateError] = useState<string>("");
@@ -485,10 +478,64 @@ export default function AstrologerWebsite() {
     setToday(`${yyyy}-${mm}-${dd}`);
   }, []);
 
+  const generatedSlots = useMemo(() => {
+    if (!siteContent?.enableBookingSlot) return [];
+    const interval = siteContent.slotInterval || 60;
+    const ranges = siteContent.slotRanges && siteContent.slotRanges.length > 0 
+      ? siteContent.slotRanges 
+      : [{ start: "09:00", end: "18:00" }];
+    
+    const slotsSet = new Set<string>();
+    
+    ranges.forEach((range: {start: string, end: string}) => {
+      const start = range.start || "09:00";
+      const end = range.end || "18:00";
+      const [startH, startM] = start.split(":").map(Number);
+      const [endH, endM] = end.split(":").map(Number);
+      let currentMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      
+      while (currentMinutes <= endMinutes) {
+        const hh = String(Math.floor(currentMinutes / 60)).padStart(2, "0");
+        const mm = String(currentMinutes % 60).padStart(2, "0");
+        slotsSet.add(`${hh}:${mm}`);
+        currentMinutes += interval;
+      }
+    });
+    
+    return Array.from(slotsSet).sort();
+  }, [siteContent]);
 
+  useEffect(() => {
+    if (!selectedDate && siteContent?.enableBookingDate !== false) {
+      setBookedSlotsCount({});
+      return;
+    }
+    const dateToFetch = siteContent?.enableBookingDate === false ? DATE_PLACEHOLDER : selectedDate;
+    if (!dateToFetch) return;
 
+    fetch(`/api/bookings?date=${encodeURIComponent(dateToFetch)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.bookings) {
+          const counts: Record<string, number> = {};
+          data.bookings.forEach((b: any) => {
+            const rawSlot = b.slot.replace(/-\d+$/, "");
+            rawSlot.split(", ").forEach((s: string) => {
+              counts[s] = (counts[s] || 0) + 1;
+            });
+          });
+          setBookedSlotsCount(counts);
+        }
+      })
+      .catch(console.error);
+  }, [selectedDate, siteContent]);
 
-
+  const toggleSlot = (slot: string) => {
+    setSelectedSlots(prev => 
+      prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot].sort()
+    );
+  };
 
   const scrollToBooking = () => {
     const section = document.getElementById("booking-section");
@@ -741,48 +788,94 @@ export default function AstrologerWebsite() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
-                  Choose a Date
-                </label>
-                <div className="relative flex items-center w-full">
-                  <Input
-                    className={`tokyo-control font-body border-[var(--tokyo-line)] transition-colors w-full ${
-                      dateError ? "border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.35)]" : ""
-                    } ${!selectedDate ? "mobile-date-empty" : "text-[var(--tokyo-text)]"}`}
-                    type="date"
-                    min={today}
-                    value={selectedDate}
-                    onChange={(e) => {
-                      setStatusMessage("");
-                      const nextDate = e.target.value;
-                      if (nextDate && nextDate < today) {
-                        setSelectedDate("");
-                        setDateError("Past dates are not allowed. Please select today or a future date.");
-                        return;
-                      }
-                      setDateError("");
-                      setSelectedDate(nextDate);
-                    }}
-                  />
-                  {!selectedDate && (
-                    <span className="pointer-events-none absolute left-3 text-sm text-white font-body mobile-date-span">
-                      DD-MM-YYYY
-                    </span>
+              {siteContent?.enableBookingDate !== false && (
+                <div className="space-y-2">
+                  <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
+                    Choose a Date
+                  </label>
+                  <div className="relative flex items-center w-full">
+                    <Input
+                      className={`tokyo-control font-body border-[var(--tokyo-line)] transition-colors w-full ${
+                        dateError ? "border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.35)]" : ""
+                      } ${!selectedDate ? "mobile-date-empty" : "text-[var(--tokyo-text)]"}`}
+                      type="date"
+                      min={today}
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setStatusMessage("");
+                        const nextDate = e.target.value;
+                        if (nextDate && nextDate < today) {
+                          setSelectedDate("");
+                          setDateError("Past dates are not allowed. Please select today or a future date.");
+                          return;
+                        }
+                        setDateError("");
+                        setSelectedDate(nextDate);
+                      }}
+                    />
+                    {!selectedDate && (
+                      <span className="pointer-events-none absolute left-3 text-sm text-white font-body mobile-date-span">
+                        DD-MM-YYYY
+                      </span>
+                    )}
+                  </div>
+                  {dateError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2"
+                    >
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                      <p className="font-body text-xs text-red-400">{dateError}</p>
+                    </motion.div>
                   )}
                 </div>
-                {dateError && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2"
-                  >
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-                    <p className="font-body text-xs text-red-400">{dateError}</p>
-                  </motion.div>
-                )}
-              </div>
+              )}
+
+              {siteContent?.enableBookingSlot && (
+                <div className="space-y-3">
+                  <label className="font-body block text-xs uppercase tracking-[0.16em] text-white">
+                    Available Time Slots
+                  </label>
+                  {(!selectedDate && siteContent?.enableBookingDate !== false) ? (
+                    <p className="font-body text-sm text-white/50 italic">Please select a date first to view available slots.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {generatedSlots.map((slot) => {
+                        const count = bookedSlotsCount[slot] || 0;
+                        const isFull = count >= 1;
+                        const isSelected = selectedSlots.includes(slot);
+
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={isFull}
+                            onClick={() => toggleSlot(slot)}
+                            className={`font-body flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all duration-200 ${
+                              isFull
+                                ? "cursor-not-allowed border-[var(--tokyo-line)] bg-red-500/5 text-white/30"
+                                : isSelected
+                                ? "border-[var(--tokyo-neon)] bg-[var(--tokyo-neon)]/10 text-[var(--tokyo-neon)] shadow-[0_0_10px_rgba(244,196,48,0.2)]"
+                                : "border-[var(--tokyo-line)] bg-[var(--tokyo-bg)]/50 text-white hover:border-white/30 hover:bg-white/5"
+                            }`}
+                          >
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>{slot}</span>
+                            {isFull && <span className="ml-1 text-[10px] text-red-400/70">(Full)</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedSlots.length > 0 && (
+                    <p className="font-body text-xs text-[var(--tokyo-neon)] mt-2">
+                      Selected: {selectedSlots.join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
 
 
 
@@ -874,23 +967,31 @@ export default function AstrologerWebsite() {
                     );
                     return;
                   }
-                  if (!selectedDate) {
-                    setStatusMessage(
-                      "Please choose a date to see available slots."
-                    );
+                  if (siteContent?.enableBookingDate !== false) {
+                    if (!selectedDate) {
+                      setStatusMessage(
+                        "Please choose a date to see available slots."
+                      );
+                      return;
+                    }
+                    if (selectedDate < today) {
+                      setStatusMessage(
+                        "Past dates are not allowed. Please select today or a future date."
+                      );
+                      return;
+                    }
+                  }
+                  if (siteContent?.enableBookingSlot && selectedSlots.length === 0) {
+                    setStatusMessage("Please select at least one available time slot.");
                     return;
                   }
-                  if (selectedDate < today) {
-                    setStatusMessage(
-                      "Past dates are not allowed. Please select today or a future date."
-                    );
-                    return;
-                  }
-
 
                   setIsSubmitting(true);
 
                   try {
+                    const finalDate = siteContent?.enableBookingDate === false ? DATE_PLACEHOLDER : selectedDate;
+                    const finalSlot = siteContent?.enableBookingSlot ? selectedSlots.join(", ") : "Standard";
+
                     const response = await fetch("/api/bookings", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -899,8 +1000,8 @@ export default function AstrologerWebsite() {
                         email,
                         whatsapp: `${countryCode.replace("-CA", "")} ${whatsapp}`.trim(),
                         notes,
-                        date: selectedDate,
-                        slot: "Standard",
+                        date: finalDate,
+                        slot: finalSlot,
 
                         birthDate: birthDate || undefined,
                         birthTime: birthTime || undefined,
@@ -916,7 +1017,7 @@ export default function AstrologerWebsite() {
                     if (response.status === 409) {
                       setStatusMessage(
                         data.error ??
-                        "That date is no longer available. Please select another."
+                        "That date or slot is no longer available. Please select another."
                       );
                       setIsSubmitting(false);
                       return;
@@ -932,7 +1033,7 @@ export default function AstrologerWebsite() {
                       : "Booking saved! A confirmation email will be sent to you shortly.";
 
                     setStatusMessage(
-                      `Consultation requested for ${selectedDate}. ${emailMessage}`
+                      `Consultation requested successfully. ${emailMessage}`
                     );
 
                   } catch {

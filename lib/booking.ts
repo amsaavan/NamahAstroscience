@@ -1,4 +1,5 @@
 export const DEFAULT_SLOT = "Standard";
+export const DATE_PLACEHOLDER = "Date will be confirmed soon by the Astrologer.";
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,7 +26,7 @@ export type BookingRecord = {
 
 export type BookingsByDate = Record<string, Record<string, BookingRecord>>;
 
-export const isValidDate = (value: string) => DATE_RE.test(value);
+export const isValidDate = (value: string) => DATE_RE.test(value) || value === DATE_PLACEHOLDER;
 
 export const isValidSlot = (value: string) => value === DEFAULT_SLOT || value.length > 0;
 

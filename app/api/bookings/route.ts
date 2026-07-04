@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BookingRecord, isValidDate, isValidSlot } from "@/lib/booking";
-import { cancelBooking, createBooking, listBookings, updateFeesPaid, updateBookingCompleted, updateBirthDetails } from "@/lib/booking-store";
+import { BookingRecord, isValidDate, isValidSlot, DATE_PLACEHOLDER } from "@/lib/booking";
+import { cancelBooking, createBooking, listBookings, updateFeesPaid, updateBookingCompleted, updateBirthDetails, updateBookingDateTime, updateBookingDetails } from "@/lib/booking-store";
 import {
   sendAdminBookingNotification,
   sendBookingConfirmation,
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
-  if (booking.date < todayLocalDateString()) {
+  if (booking.date !== DATE_PLACEHOLDER && booking.date < todayLocalDateString()) {
     return NextResponse.json(
       { error: "Past dates are not allowed." },
       { status: 400 }
@@ -197,6 +197,12 @@ export async function PATCH(request: NextRequest) {
     birthLat?: number;
     birthLon?: number;
     birthTimezone?: string;
+    newDate?: string;
+    newSlot?: string;
+    fullName?: string;
+    email?: string;
+    whatsapp?: string;
+    notes?: string;
   };
   const date = (body.date ?? "").trim();
   const slot = (body.slot ?? "").trim();
@@ -258,6 +264,47 @@ export async function PATCH(request: NextRequest) {
       );
     }
     return NextResponse.json({ success: true });
+  }
+
+  if (body.newDate !== undefined || body.newSlot !== undefined || body.fullName !== undefined || body.email !== undefined || body.whatsapp !== undefined || body.notes !== undefined) {
+    const updates: Partial<BookingRecord> = {};
+    if (body.fullName !== undefined) updates.fullName = body.fullName.trim();
+    if (body.email !== undefined) updates.email = body.email.trim();
+    if (body.whatsapp !== undefined) updates.whatsapp = body.whatsapp.trim();
+    if (body.notes !== undefined) updates.notes = body.notes.trim();
+    if (body.newDate !== undefined) updates.date = body.newDate.trim();
+    if (body.newSlot !== undefined) updates.slot = body.newSlot.trim();
+
+    if (updates.email && !isValidEmail(updates.email)) {
+      return NextResponse.json({ error: "Invalid email format." }, { status: 400 });
+    }
+    if (updates.date && !isValidDate(updates.date)) {
+      return NextResponse.json({ error: "Invalid date format." }, { status: 400 });
+    }
+    if (updates.date && updates.date !== DATE_PLACEHOLDER && updates.date < todayLocalDateString()) {
+      return NextResponse.json({ error: "Past dates are not allowed for appointments." }, { status: 400 });
+    }
+
+    const result = await updateBookingDetails(date, slot, updates);
+    if (!result.ok) {
+      if (result.reason === "slot_taken") {
+        return NextResponse.json({ error: "That slot is already booked." }, { status: 409 });
+      }
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+    
+    // If date or slot actually changed, send rescheduled emails
+    const dateChanged = body.newDate !== undefined && body.newDate.trim() !== date;
+    const slotChanged = body.newSlot !== undefined && body.newSlot.trim() !== slot;
+    
+    if ((dateChanged || slotChanged) && result.record) {
+      await Promise.all([
+        sendBookingConfirmation(result.record, true),
+        sendAdminBookingNotification(result.record, true)
+      ]);
+    }
+    
+    return NextResponse.json({ success: true, record: result.record });
   }
 
   return NextResponse.json({ error: "No update parameters provided." }, { status: 400 });

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, Six_Caps, Cormorant_Garamond, Merriweather } from "next/font/google";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 const sixCaps = Six_Caps({
   variable: "--font-admin-display",
@@ -44,6 +46,8 @@ export default function RootLayout({
     <html lang="en">
       <body suppressHydrationWarning className={`${sixCaps.variable} ${barlowCondensed.variable} ${cormorantGaramond.variable} ${merriweather.variable} antialiased`}>
         {children}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

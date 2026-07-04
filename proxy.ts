@@ -4,7 +4,7 @@ const COOKIE_NAME = "admin_session";
 
 /**
  * Edge-compatible JWT verification (Web Crypto API / HMAC-SHA256).
- * proxy.ts runs on the Edge runtime — Node's crypto is not available.
+ * Node's crypto is not available in the Edge runtime.
  */
 async function verifyJwt(token: string): Promise<boolean> {
   try {
@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(COOKIE_NAME)?.value ?? "";
 
   // If already logged in and visiting /admin/login → redirect to dashboard
-  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+  if (pathname === "/admin/login" || pathname === "/admin") {
     if (await verifyJwt(token)) {
       return NextResponse.redirect(new URL("/admin/bookings", request.url));
     }
@@ -57,7 +57,6 @@ export async function proxy(request: NextRequest) {
     if (!(await verifyJwt(token))) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
-    return NextResponse.next();
   }
 
   return NextResponse.next();
@@ -66,3 +65,5 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/admin/:path*"],
 };
+
+export default proxy;

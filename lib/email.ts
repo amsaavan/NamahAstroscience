@@ -37,7 +37,8 @@ async function getTransporter() {
 // ─── Customer Confirmation Email ────────────────────────────────────────────
 
 export async function sendBookingConfirmation(
-  booking: BookingRecord
+  booking: BookingRecord,
+  isRescheduled: boolean = false
 ): Promise<SendOutcome> {
   if (!hasSmtpConfig()) {
     return { sent: false, reason: "smtp_not_configured" };
@@ -66,8 +67,8 @@ export async function sendBookingConfirmation(
         <!-- Body -->
         <tr>
           <td style="padding:40px;">
-            <h2 style="margin:0 0 8px;font-size:22px;color:#f4c430;">Booking Confirmed ✦</h2>
-            <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;">Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, your consultation has been successfully booked.</p>
+            <h2 style="margin:0 0 8px;font-size:22px;color:#f4c430;">${isRescheduled ? "Schedule Confirmed" : "Booking Confirmed"} ✦</h2>
+            <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;">Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, your consultation ${isRescheduled ? "schedule has been confirmed" : "has been successfully booked"}.</p>
 
             <!-- Details Card -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#111a2e;border-radius:12px;border:1px solid #1e2a45;overflow:hidden;margin-bottom:28px;">
@@ -77,7 +78,7 @@ export async function sendBookingConfirmation(
                     <tr>
                       <td style="padding:10px 0;border-bottom:1px solid #1e2a45;">
                         <span style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:2px;">Date</span><br>
-                        <span style="font-size:16px;color:#f4c430;font-weight:600;">${booking.date}</span>
+                        <span style="font-size:16px;color:#f4c430;font-weight:600;">${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` &middot; ${booking.slot.replace(/-\\d+$/, "")}` : ""}</span>
                       </td>
                     </tr>
 
@@ -151,8 +152,8 @@ export async function sendBookingConfirmation(
   const text = [
     `Hi ${booking.fullName},`,
     "",
-    "Your consultation has been booked successfully.",
-    `Date: ${booking.date}`,
+    isRescheduled ? "Your consultation schedule has been confirmed." : "Your consultation has been booked successfully.",
+    `Date: ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""}`,
     booking.notes ? `Notes: ${booking.notes}` : "",
     "",
     "Jinesh will reach out on WhatsApp to confirm.",
@@ -173,7 +174,7 @@ export async function sendBookingConfirmation(
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: booking.email,
-      subject: "Your consultation is confirmed — Namah Astroscience",
+      subject: isRescheduled ? "Your consultation schedule is confirmed — Namah Astroscience" : "Your consultation is confirmed — Namah Astroscience",
       text,
       html,
     });
@@ -189,7 +190,8 @@ export async function sendBookingConfirmation(
 // ─── Admin Notification Email ────────────────────────────────────────────────
 
 export async function sendAdminBookingNotification(
-  booking: BookingRecord
+  booking: BookingRecord,
+  isRescheduled: boolean = false
 ): Promise<SendOutcome> {
   if (!hasSmtpConfig()) {
     return { sent: false, reason: "smtp_not_configured" };
@@ -213,14 +215,14 @@ export async function sendAdminBookingNotification(
         <tr>
           <td style="background:linear-gradient(135deg,#7A0000,#4a0000);padding:28px 40px;text-align:center;">
             <p style="margin:0 0 4px;font-size:12px;letter-spacing:3px;color:#f4c430;text-transform:uppercase;">Admin Notification</p>
-            <h1 style="margin:0;font-size:24px;font-weight:700;color:#f4c430;letter-spacing:2px;">New Booking Received</h1>
+            <h1 style="margin:0;font-size:24px;font-weight:700;color:#f4c430;letter-spacing:2px;">${isRescheduled ? "Schedule Set" : "New Booking Received"}</h1>
           </td>
         </tr>
 
         <!-- Body -->
         <tr>
           <td style="padding:36px 40px;">
-            <p style="margin:0 0 24px;font-size:15px;color:#9ca3af;">A new consultation has been booked. Details below:</p>
+            <p style="margin:0 0 24px;font-size:15px;color:#9ca3af;">${isRescheduled ? "An appointment schedule has been set." : "A new consultation has been booked."} Details below:</p>
 
             <!-- Client Details -->
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#111a2e;border-radius:12px;border:1px solid #1e2a45;overflow:hidden;margin-bottom:24px;">
@@ -254,7 +256,7 @@ export async function sendAdminBookingNotification(
                 <table width="100%" cellpadding="0" cellspacing="8">
                   <tr>
                     <td style="width:130px;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;padding:6px 0;">Date</td>
-                    <td style="font-size:15px;color:#f4c430;font-weight:600;padding:6px 0;">${booking.date}</td>
+                    <td style="font-size:15px;color:#f4c430;font-weight:600;padding:6px 0;">${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` &middot; ${booking.slot.replace(/-\\d+$/, "")}` : ""}</td>
                   </tr>
 
                    ${booking.notes ? `
@@ -295,11 +297,11 @@ export async function sendAdminBookingNotification(
 </html>`;
 
   const text = [
-    "New Booking —",
+    isRescheduled ? "Schedule Set —" : "New Booking —",
     `Name: ${booking.fullName}`,
     `Email: ${booking.email}`,
     `WhatsApp: ${booking.whatsapp}`,
-    `Date: ${booking.date}`,
+    `Date: ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""}`,
     `Notes: ${booking.notes || "-"}`,
     `Booked At: ${booking.createdAt}`,
   ].join("\n");
@@ -310,7 +312,7 @@ export async function sendAdminBookingNotification(
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM,
       to: process.env.ADMIN_NOTIFY_EMAIL,
-      subject: `🔔 New Booking — ${booking.fullName} · ${booking.date}`,
+      subject: isRescheduled ? `📅 Schedule Set — ${booking.fullName} · ${booking.date}` : `🔔 New Booking — ${booking.fullName} · ${booking.date}`,
       text,
       html,
     });
@@ -418,7 +420,7 @@ export async function sendInvoiceEmail(
           <td style="padding:40px;">
             <h2 style="margin:0 0 12px;font-size:20px;color:#f4c430;">Consultation Completed ✦</h2>
             <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;line-height:1.6;">
-              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, thank you for your consultation on ${booking.date}. 
+              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, thank you for your consultation on ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""}. 
               Please find the billing details for your session below.
             </p>
 
@@ -489,7 +491,7 @@ export async function sendInvoiceEmail(
       from: process.env.SMTP_FROM,
       to: booking.email,
       subject: `Invoice for your consultation — Namah Astroscience`,
-      text: `Hi ${booking.fullName},\n\nYour consultation on ${booking.date} is completed. Amount due: ${currency} ${amount}.${noteText}\n\nPlease complete the payment via WhatsApp: +91 79849 60585.\n\nPlease share your review with us — your words help us guide others on their journey:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nYour consultation on ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""} is completed. Amount due: ${currency} ${amount}.${noteText}\n\nPlease complete the payment via WhatsApp: +91 79849 60585.\n\nPlease share your review with us — your words help us guide others on their journey:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
       html,
     });
     return { sent: true };
@@ -521,7 +523,7 @@ export async function sendPaymentReminderEmail(
         <tr>
           <td style="padding:40px;">
             <p style="margin:0 0 24px;font-size:15px;color:#9ca3af;line-height:1.6;">
-              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, this is a friendly reminder regarding the pending payment for your consultation held on ${booking.date}.
+              Hi <strong style="color:#e2e8f0;">${booking.fullName}</strong>, this is a friendly reminder regarding the pending payment for your consultation held on ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""}.
             </p>
 
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#111a2e;border-radius:12px;border:1px solid #1e2a45;margin-bottom:28px;">
@@ -566,7 +568,7 @@ export async function sendPaymentReminderEmail(
       from: process.env.SMTP_FROM,
       to: booking.email,
       subject: `Friendly Payment Reminder — Namah Astroscience`,
-      text: `Hi ${booking.fullName},\n\nThis is a friendly reminder for the pending payment of ${currency} ${amount} for your session on ${booking.date}.\n\nWhatsApp: +91 79849 60585.\n\nAlso, if you'd like to share your experience with us, we'd love to hear from you:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
+      text: `Hi ${booking.fullName},\n\nThis is a friendly reminder for the pending payment of ${currency} ${amount} for your session on ${booking.date}${booking.slot && !booking.slot.startsWith("Standard") ? ` at ${booking.slot.replace(/-\\d+$/, "")}` : ""}.\n\nWhatsApp: +91 79849 60585.\n\nAlso, if you'd like to share your experience with us, we'd love to hear from you:\nhttps://namahastroscience.com/#reviews\n\nThank you,\nNamah Astroscience`,
       html,
     });
     return { sent: true };

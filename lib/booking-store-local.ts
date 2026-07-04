@@ -140,3 +140,67 @@ export async function updateBirthDetails(date: string, slot: string, birthDate: 
     writeQueue = next.then(() => undefined, () => undefined);
     return next;
 }
+
+export async function updateBookingDateTime(oldDate: string, oldSlot: string, newDate: string, newSlot: string) {
+    const run = async () => {
+        const store = await readStore();
+        const oldDay = store[oldDate] ?? {};
+        if (!oldDay[oldSlot]) return { ok: false as const };
+        
+        const record = oldDay[oldSlot];
+        
+        // Remove old
+        delete oldDay[oldSlot];
+        if (Object.keys(oldDay).length === 0) delete store[oldDate];
+        else store[oldDate] = oldDay;
+        
+        // Add new
+        const newDay = store[newDate] ?? {};
+        if (newDay[newSlot]) return { ok: false as const, reason: "slot_taken" };
+        
+        store[newDate] = { ...newDay, [newSlot]: { ...record, date: newDate, slot: newSlot } };
+        
+        await writeStore(store);
+        return { ok: true as const, record: store[newDate][newSlot] };
+    };
+    const next = writeQueue.then(run);
+    writeQueue = next.then(() => undefined, () => undefined);
+    return next;
+}
+
+export async function updateBookingDetails(oldDate: string, oldSlot: string, updates: Partial<BookingRecord>) {
+    const run = async () => {
+        const store = await readStore();
+        const oldDay = store[oldDate] ?? {};
+        if (!oldDay[oldSlot]) return { ok: false as const };
+        
+        const oldRecord = oldDay[oldSlot];
+        const record = { ...oldRecord, ...updates };
+        const newDate = record.date;
+        const newSlot = record.slot;
+
+        if (newDate !== oldDate || newSlot !== oldSlot) {
+            // Check if new slot taken
+            const newDay = store[newDate] ?? {};
+            if (newDay[newSlot]) return { ok: false as const, reason: "slot_taken" };
+
+            // Remove old
+            delete oldDay[oldSlot];
+            if (Object.keys(oldDay).length === 0) delete store[oldDate];
+            else store[oldDate] = oldDay;
+
+            // Add new
+            const finalNewDay = store[newDate] ?? {};
+            store[newDate] = { ...finalNewDay, [newSlot]: record };
+        } else {
+            store[oldDate] = { ...oldDay, [oldSlot]: record };
+        }
+        
+        await writeStore(store);
+        return { ok: true as const, record };
+    };
+    const next = writeQueue.then(run);
+    writeQueue = next.then(() => undefined, () => undefined);
+    return next;
+}
+

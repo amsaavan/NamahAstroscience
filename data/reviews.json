@@ -61,24 +61,6 @@
     "review": "I feel so blessed to have worked with Jinesh. The depth of information he shared was incredible, and his predictions were spot on. He gave me a new sense of purpose and a clear direction to work toward. Jinesh is so confident about the upcoming milestones in my life, which makes me feel incredibly secure about the future. His business insights were sharp and practical, and his personal advice hit home perfectly. I’m certain his remedies will bring the results I’m looking for!”",
     "id": "1777361729997-usraez",
     "createdAt": "2026-04-28T07:35:29.998Z",
-    "reply": "thankyou"
-  },
-  {
-    "name": "Saavan Asodaria",
-    "location": "Vadodara",
-    "country": "India",
-    "rating": 5,
-    "review": "{/* Side Gradients for fading effect */}\n              <div className=\"absolute left-0 top-0 z-20 h-full w-20 bg-gradient-to-r",
-    "id": "1777362684572-ne5b8g",
-    "createdAt": "2026-04-28T07:51:24.575Z"
-  },
-  {
-    "name": "Saavan Asodaria",
-    "location": "Vadodara",
-    "country": "India",
-    "rating": 5,
-    "review": "{/* Side Gradients for fading effect */}\n              <div className=\"absolute left-0 top-0 z-20 h-full w-20 bg-gradient-to-r from-[#090f1d] to-transparent pointer-events-none\" />",
-    "id": "1777362703356-6lw1gz",
-    "createdAt": "2026-04-28T07:51:43.356Z"
+    "reply": ""
   }
 ]

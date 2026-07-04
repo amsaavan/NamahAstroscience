@@ -1802,8 +1802,33 @@ export default function AdminBookingsPage() {
     null,
   );
   const [noteBooking, setNoteBooking] = useState<BookingRecord | null>(null);
+  const [scheduleBooking, setScheduleBooking] = useState<BookingRecord | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleSlot, setScheduleSlot] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
+  const [isScheduling, setIsScheduling] = useState(false);
   const [remindingKey, setRemindingKey] = useState("");
+  const [editBooking, setEditBooking] = useState<BookingRecord | null>(null);
+  const [editFormData, setEditFormData] = useState({
+      fullName: "",
+      email: "",
+      whatsapp: "",
+      notes: "",
+      date: "",
+      slot: "",
+  });
+  const [editError, setEditError] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [today, setToday] = useState("");
+
+  useEffect(() => {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    setToday(`${yyyy}-${mm}-${dd}`);
+  }, []);
 
   const endpoint = useMemo(() => {
     if (!selectedDate) return "/api/bookings";
@@ -1935,7 +1960,12 @@ export default function AdminBookingsPage() {
                   key={`${booking.date}-${booking.slot}-${booking.createdAt}`}
                   className="border-t border-[#efe4d6] group hover:bg-[#faf6f0]"
                 >
-                  <td className="px-4 py-3 align-middle">{booking.date}</td>
+                  <td className="px-4 py-3 align-middle">
+                    <div>{booking.date}</div>
+                    {booking.slot && !booking.slot.startsWith("Standard") && (
+                      <div className="mt-0.5 text-xs text-[#6b4c3b] font-medium">{booking.slot.replace(/-\d+$/, "")}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 align-middle font-medium">
                     {booking.fullName}
                   </td>
@@ -2034,6 +2064,38 @@ export default function AdminBookingsPage() {
                   </td>
                   <td className="px-4 py-3 align-middle">
                     <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditBooking(booking);
+                          setEditFormData({
+                              fullName: booking.fullName,
+                              email: booking.email,
+                              whatsapp: booking.whatsapp,
+                              notes: booking.notes || "",
+                              date: booking.date === "Date will be confirmed soon by the Astrologer." ? "" : booking.date,
+                              slot: booking.slot.replace(/-\d+$/, ""),
+                          });
+                          setEditError("");
+                        }}
+                        className="flex items-center justify-center rounded-md px-2 py-1.5 text-xs font-semibold bg-gray-100 text-gray-700 ring-1 ring-gray-300 hover:bg-gray-200 transition"
+                      >
+                        Edit
+                      </button>
+                      {(booking.date === "Date will be confirmed soon by the Astrologer." || booking.slot?.startsWith("Standard")) && !isCompletedSection && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScheduleBooking(booking);
+                            setScheduleDate(booking.date === "Date will be confirmed soon by the Astrologer." ? "" : booking.date);
+                            setScheduleSlot("");
+                            setScheduleError("");
+                          }}
+                          className="flex min-w-[85px] items-center justify-center rounded-md px-3 py-1.5 text-xs transition hover:-translate-y-0.5 whitespace-nowrap bg-indigo-100 font-medium text-indigo-800 ring-1 ring-indigo-400 hover:bg-indigo-200"
+                        >
+                          📅 Set Schedule
+                        </button>
+                      )}
                       <button
                         type="button"
                         disabled={cancellingKey === rowKey + "-done"}
@@ -2368,6 +2430,244 @@ export default function AdminBookingsPage() {
             </>
           )}
         </div>
+
+        {/* Schedule Modal */}
+        {scheduleBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="mb-4 text-xl font-bold text-[#3b2417]">
+                Set Schedule for {scheduleBooking.fullName}
+              </h3>
+              {scheduleError && (
+                <div className="mb-4 rounded bg-red-100 p-2 text-sm text-red-700">
+                  {scheduleError}
+                </div>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Date (YYYY-MM-DD)</label>
+                  <input
+                    type="date"
+                    min={today}
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Time Slot (e.g. 10:00 AM)</label>
+                  <input
+                    type="text"
+                    value={scheduleSlot}
+                    onChange={(e) => setScheduleSlot(e.target.value)}
+                    placeholder="e.g. 10:00 AM - 11:00 AM"
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setScheduleBooking(null)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-[#6b4c3b] hover:bg-[#efe4d6] transition"
+                  disabled={isScheduling}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!scheduleDate || !scheduleSlot || isScheduling}
+                  onClick={async () => {
+                    if (scheduleDate && scheduleDate < today) {
+                      setScheduleError("Past dates are not allowed.");
+                      return;
+                    }
+                    setIsScheduling(true);
+                    setScheduleError("");
+                    try {
+                      const r = await fetch("/api/bookings", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          date: scheduleBooking.date,
+                          slot: scheduleBooking.slot,
+                          newDate: scheduleDate,
+                          newSlot: scheduleSlot,
+                        }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok) {
+                        setScheduleError(d.error || "Failed to set schedule.");
+                        setIsScheduling(false);
+                        return;
+                      }
+                      
+                      setBookings((prev) =>
+                        prev.map((item) =>
+                          item.date === scheduleBooking.date && item.slot === scheduleBooking.slot
+                            ? { ...item, date: scheduleDate, slot: scheduleSlot }
+                            : item
+                        )
+                      );
+                      
+                      setScheduleBooking(null);
+                    } catch (err) {
+                      setScheduleError("Failed to set schedule.");
+                    } finally {
+                      setIsScheduling(false);
+                    }
+                  }}
+                  className="rounded-lg bg-[#3b2417] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-[#2a1a10] disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {isScheduling ? "Saving..." : "Save Schedule"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Modal */}
+        {editBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="mb-4 text-xl font-bold text-[#3b2417]">
+                Edit Appointment
+              </h3>
+              {editError && (
+                <div className="mb-4 rounded bg-red-100 p-2 text-sm text-red-700">
+                  {editError}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Full Name</label>
+                  <input
+                    type="text"
+                    value={editFormData.fullName}
+                    onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={editFormData.whatsapp}
+                    onChange={(e) => setEditFormData({ ...editFormData, whatsapp: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Date (YYYY-MM-DD)</label>
+                  <input
+                    type="date"
+                    min={today}
+                    value={editFormData.date}
+                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Time Slot</label>
+                  <input
+                    type="text"
+                    value={editFormData.slot}
+                    onChange={(e) => setEditFormData({ ...editFormData, slot: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-semibold text-[#6b4c3b]">Notes</label>
+                  <textarea
+                    rows={3}
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    className="w-full rounded-md border border-[#d6c7b2] px-3 py-2 text-[#3b2417] focus:border-[#a06841] focus:outline-none focus:ring-1 focus:ring-[#a06841]"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditBooking(null)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-[#6b4c3b] hover:bg-[#efe4d6] transition"
+                  disabled={isEditing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isEditing}
+                  onClick={async () => {
+                    if (editFormData.date && editFormData.date < today) {
+                      setEditError("Past dates are not allowed.");
+                      return;
+                    }
+                    setIsEditing(true);
+                    setEditError("");
+                    try {
+                      const r = await fetch("/api/bookings", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          date: editBooking.date,
+                          slot: editBooking.slot,
+                          fullName: editFormData.fullName,
+                          email: editFormData.email,
+                          whatsapp: editFormData.whatsapp,
+                          notes: editFormData.notes,
+                          newDate: editFormData.date || "Date will be confirmed soon by the Astrologer.",
+                          newSlot: editFormData.slot,
+                        }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok) {
+                        setEditError(d.error || "Failed to update booking.");
+                        setIsEditing(false);
+                        return;
+                      }
+                      
+                      setBookings((prev) =>
+                        prev.map((item) =>
+                          item.date === editBooking.date && item.slot === editBooking.slot
+                            ? { 
+                                ...item, 
+                                fullName: editFormData.fullName,
+                                email: editFormData.email,
+                                whatsapp: editFormData.whatsapp,
+                                notes: editFormData.notes,
+                                date: editFormData.date || "Date will be confirmed soon by the Astrologer.",
+                                slot: d.record?.slot || item.slot // Use server's slot which might have suffix
+                              }
+                            : item
+                        )
+                      );
+                      
+                      setEditBooking(null);
+                    } catch (err) {
+                      setEditError("Failed to update booking.");
+                    } finally {
+                      setIsEditing(false);
+                    }
+                  }}
+                  className="rounded-lg bg-[#3b2417] px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-[#2a1a10] disabled:opacity-50 disabled:hover:translate-y-0"
+                >
+                  {isEditing ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   );

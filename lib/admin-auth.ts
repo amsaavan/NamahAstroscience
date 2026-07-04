@@ -12,7 +12,14 @@ const OTP_RATE_LIMIT_MS = 60 * 1000;       // 1 OTP per 60 seconds
 export const OTP_COOKIE  = "admin_otp_tok";
 
 export function getOtpSecret(): string {
-  return process.env.ADMIN_JWT_SECRET ?? "fallback-dev-secret";
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ADMIN_JWT_SECRET must be set in production.");
+    }
+    return "dev-secret-only";
+  }
+  return secret;
 }
 
 /** Build the signed OTP cookie value: `hmac|expiresAt` */
@@ -79,7 +86,7 @@ export function verifyOtp(input: string, cookieValue: string): boolean {
 // ─── JWT Session (HMAC-SHA256, no external packages) ───────────────────────
 
 function getJwtSecret(): string {
-  return process.env.ADMIN_JWT_SECRET ?? "";
+  return getOtpSecret();
 }
 
 export function isAuthConfigValid(): boolean {

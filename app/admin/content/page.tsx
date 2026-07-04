@@ -107,6 +107,26 @@ export default function AdminContentPage() {
     setContent({ ...content, aboutPoints: newPoints });
   };
 
+  const handleAddRange = () => {
+    if (!content) return;
+    const newRanges = [...(content.slotRanges || []), { start: "09:00", end: "18:00" }];
+    setContent({ ...content, slotRanges: newRanges });
+  };
+
+  const handleRemoveRange = (index: number) => {
+    if (!content) return;
+    const newRanges = [...(content.slotRanges || [])];
+    newRanges.splice(index, 1);
+    setContent({ ...content, slotRanges: newRanges });
+  };
+
+  const handleRangeChange = (index: number, field: "start" | "end", value: string) => {
+    if (!content) return;
+    const newRanges = [...(content.slotRanges || [])];
+    newRanges[index] = { ...newRanges[index], [field]: value };
+    setContent({ ...content, slotRanges: newRanges });
+  };
+
   if (isLoading) return <p className="text-white">Loading content...</p>;
   if (!content) return <p className="text-red-400">Failed to load content.</p>;
 
@@ -233,6 +253,105 @@ export default function AdminContentPage() {
                 value={content.heroSubtitle}
                 onChange={(e) => setContent({ ...content, heroSubtitle: e.target.value })}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-[#d6c7b2] bg-white shadow-sm">
+          <CardContent className="space-y-6 p-6 text-[#2b1b12]">
+            <h3 className="text-xl font-bold text-[#7a1c1c]">Booking Form Settings</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border border-[#d6c7b2] p-3 rounded-lg bg-gray-50/50">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#6b4c3b] uppercase">Enable Date Selection</label>
+                    <p className="text-xs text-gray-500">Allow users to select a booking date.</p>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="h-5 w-5 accent-[#7a1c1c] cursor-pointer"
+                    checked={content.enableBookingDate ?? true}
+                    onChange={(e) => setContent({ ...content, enableBookingDate: e.target.checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between border border-[#d6c7b2] p-3 rounded-lg bg-gray-50/50">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#6b4c3b] uppercase">Enable Slot Selection</label>
+                    <p className="text-xs text-gray-500">Allow users to select time slots.</p>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    className="h-5 w-5 accent-[#7a1c1c] cursor-pointer"
+                    checked={content.enableBookingSlot ?? false}
+                    onChange={(e) => setContent({ ...content, enableBookingSlot: e.target.checked })}
+                  />
+                </div>
+              </div>
+
+              {content.enableBookingSlot && (
+                <div className="space-y-4 border border-[#d6c7b2] p-4 rounded-lg bg-gray-50/50">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-[#6b4c3b] uppercase">Slot Interval (Minutes)</label>
+                    <select
+                      className="w-full rounded border border-[#d6c7b2] p-2 bg-white focus:border-[#7a1c1c] outline-none"
+                      value={content.slotInterval ?? 60}
+                      onChange={(e) => setContent({ ...content, slotInterval: parseInt(e.target.value) })}
+                    >
+                      <option value={15}>15 Minutes</option>
+                      <option value={30}>30 Minutes</option>
+                      <option value={45}>45 Minutes</option>
+                      <option value={60}>60 Minutes (1 Hour)</option>
+                      <option value={90}>90 Minutes (1.5 Hours)</option>
+                      <option value={120}>120 Minutes (2 Hours)</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-4 pt-2 border-t border-[#d6c7b2]/50 mt-2">
+                    <label className="block text-xs font-semibold text-[#6b4c3b] uppercase">Time Ranges</label>
+                    {(!content.slotRanges || content.slotRanges.length === 0) && (
+                      <p className="text-xs text-gray-500 italic">No time ranges defined. Users won't see any slots.</p>
+                    )}
+                    {(content.slotRanges || []).map((range, index) => (
+                      <div key={index} className="flex items-center gap-3 bg-white p-3 rounded border border-[#d6c7b2]">
+                        <div className="flex-1 space-y-1">
+                          <label className="block text-[10px] font-semibold text-gray-500 uppercase">Start Time</label>
+                          <Input
+                            type="time"
+                            className="w-full rounded border border-[#d6c7b2] p-1.5 h-8 text-sm focus:border-[#7a1c1c] outline-none"
+                            value={range.start}
+                            onChange={(e) => handleRangeChange(index, "start", e.target.value)}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="block text-[10px] font-semibold text-gray-500 uppercase">End Time</label>
+                          <Input
+                            type="time"
+                            className="w-full rounded border border-[#d6c7b2] p-1.5 h-8 text-sm focus:border-[#7a1c1c] outline-none"
+                            value={range.end}
+                            onChange={(e) => handleRangeChange(index, "end", e.target.value)}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRange(index)}
+                          className="mt-4 text-xs font-semibold text-red-500 hover:text-red-700 px-2 py-1"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button 
+                      type="button"
+                      onClick={handleAddRange} 
+                      className="w-full rounded border border-[#d6c7b2] py-2 text-xs font-semibold text-[#6b4c3b] hover:bg-white transition-colors"
+                    >
+                      + Add Time Range
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

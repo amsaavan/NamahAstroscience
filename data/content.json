@@ -38,5 +38,19 @@
       "desc": "Personalised gemstone recommendations to strengthen planets."
     }
   ],
-  "themeColor": "#f4c430"
+  "themeColor": "#f4c430",
+  "enableBookingSlot": false,
+  "allowMultipleBookingsPerSlot": false,
+  "slotRanges": [
+    {
+      "start": "09:00",
+      "end": "13:00"
+    },
+    {
+      "start": "15:00",
+      "end": "18:00"
+    }
+  ],
+  "enableBookingDate": false,
+  "slotInterval": 60
 }

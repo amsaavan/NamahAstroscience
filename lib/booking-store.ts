@@ -67,3 +67,21 @@ export async function updateBirthDetails(date: string, slot: string, birthDate: 
   const { updateBirthDetails } = await import("@/lib/booking-store-local");
   return updateBirthDetails(date, slot, birthDate, birthTime, birthPlace, lat, lon, timezone);
 }
+
+export async function updateBookingDateTime(oldDate: string, oldSlot: string, newDate: string, newSlot: string) {
+  if (isVercel) {
+    const { updateBookingDateTime } = await import("@/lib/booking-store-supabase");
+    return updateBookingDateTime(oldDate, oldSlot, newDate, newSlot);
+  }
+  const { updateBookingDateTime } = await import("@/lib/booking-store-local");
+  return updateBookingDateTime(oldDate, oldSlot, newDate, newSlot);
+}
+
+export async function updateBookingDetails(oldDate: string, oldSlot: string, updates: Partial<BookingRecord>) {
+  if (isVercel) {
+    const { updateBookingDetails } = await import("@/lib/booking-store-supabase");
+    return updateBookingDetails(oldDate, oldSlot, updates);
+  }
+  const { updateBookingDetails } = await import("@/lib/booking-store-local");
+  return updateBookingDetails(oldDate, oldSlot, updates);
+}

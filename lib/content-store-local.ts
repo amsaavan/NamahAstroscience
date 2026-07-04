@@ -13,6 +13,10 @@ export type SiteContent = {
   aboutPreface: string;
   aboutPoints: string[];
   services: SiteService[];
+  enableBookingDate?: boolean;
+  enableBookingSlot?: boolean;
+  slotInterval?: number;
+  slotRanges?: { start: string; end: string }[];
 };
 
 const filePath = path.join(process.cwd(), "data", "content.json");
