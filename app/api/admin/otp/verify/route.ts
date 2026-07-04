@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         sameSite: "strict",
         secure: process.env.NODE_ENV === "production",
         path: "/",
+        maxAge: 60 * 60 * 24 * 7, // 7 days — matches JWT exp
     });
 
     // Clear the OTP cookie — it's single-use

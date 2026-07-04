@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createReview, deleteReview, listReviews, updateReview } from "@/lib/review-store";
+import { ADMIN_SESSION_COOKIE, verifySessionJwt } from "@/lib/admin-auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+function isAdminAuthed(request: NextRequest): boolean {
+    const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value ?? "";
+    return verifySessionJwt(token);
+}
 
 type ReviewPayload = {
     name: string;
@@ -27,6 +34,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+    // Rate limiting: 3 reviews per hour per IP
+    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    if (!rateLimit(ip, 3, 60 * 60 * 1000)) {
+        return NextResponse.json(
+            { error: "Too many review submissions. Please try again later." },
+            { status: 429 }
+        );
+    }
+
     const body = (await request.json()) as ReviewPayload;
 
     const name = (body.name ?? "").trim();
@@ -56,6 +72,11 @@ export async function POST(request: NextRequest) {
             { status: 400 }
         );
     }
+
+    // Length limits
+    if (name.length > 100) return NextResponse.json({ error: "Name must be 100 characters or fewer." }, { status: 400 });
+    if (location.length > 150) return NextResponse.json({ error: "City must be 150 characters or fewer." }, { status: 400 });
+    if (country.length > 100) return NextResponse.json({ error: "Country must be 100 characters or fewer." }, { status: 400 });
     if (review.length > 600) {
         return NextResponse.json(
             { error: "Review must be 600 characters or fewer." },
@@ -63,11 +84,21 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const created = await createReview({ name, location, country, rating, review });
-    return NextResponse.json({ review: created }, { status: 201 });
+    try {
+        const created = await createReview({ name, location, country, rating, review });
+        return NextResponse.json({ review: created }, { status: 201 });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[reviews POST] error:", message);
+        return NextResponse.json({ error: "An unexpected error occurred. Please try again later." }, { status: 500 });
+    }
 }
 
 export async function PUT(request: NextRequest) {
+    if (!isAdminAuthed(request)) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const body = (await request.json()) as UpdatePayload;
     
     const id = (body.id ?? "").trim();
@@ -87,12 +118,18 @@ export async function PUT(request: NextRequest) {
     try {
         const updated = await updateReview(id, updates);
         return NextResponse.json({ review: updated }, { status: 200 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message || "Failed to update review." }, { status: 500 });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[reviews PUT] error:", message);
+        return NextResponse.json({ error: "An unexpected error occurred. Please try again later." }, { status: 500 });
     }
 }
 
 export async function DELETE(request: NextRequest) {
+    if (!isAdminAuthed(request)) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const body = (await request.json()) as { id?: string };
     const id = (body.id ?? "").trim();
 
@@ -100,10 +137,15 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ error: "Review ID is required." }, { status: 400 });
     }
 
-    const result = await deleteReview(id);
-    if (!result.ok) {
-        return NextResponse.json({ error: "Review not found." }, { status: 404 });
+    try {
+        const result = await deleteReview(id);
+        if (!result.ok) {
+            return NextResponse.json({ error: "Review not found." }, { status: 404 });
+        }
+        return NextResponse.json({ success: true });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[reviews DELETE] error:", message);
+        return NextResponse.json({ error: "An unexpected error occurred. Please try again later." }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true });
 }

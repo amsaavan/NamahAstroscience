@@ -840,11 +840,11 @@ export default function AstrologerWebsite() {
                       Available Time Slots
                     </label>
                     <p className="font-body text-[11px] text-white mt-1">
-                      Select multiple slots according to your needs
+                      Select multiple slots according to your needs.
                     </p>
                   </div>
                   {(!selectedDate && siteContent?.enableBookingDate !== false) ? (
-                    <p className="font-body text-sm text-white italic">Please select a date first to view available slots.</p>
+                    <p className="font-body text-sm text-white/50 italic">Please select a date first to view available slots.</p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {generatedSlots.map((slot) => {

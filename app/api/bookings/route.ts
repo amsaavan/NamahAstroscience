@@ -70,11 +70,6 @@ function todayLocalDateString() {
 
 
 
-function isSlotInPast(slot: string): boolean {
-  // Always returns false as we are removing specific time slots
-  return false;
-}
-
 export async function GET(request: NextRequest) {
   const date = request.nextUrl.searchParams.get("date");
 
@@ -83,6 +78,11 @@ export async function GET(request: NextRequest) {
       { error: "Invalid date format. Use YYYY-MM-DD." },
       { status: 400 }
     );
+  }
+
+  // Listing all bookings (no date filter) requires admin auth — contains PII
+  if (!date && !isAdminAuthed(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const bookings = await listBookings(date ?? undefined);
@@ -174,8 +174,8 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[bookings POST] Supabase error:", message);
-    return NextResponse.json({ error: `Server error: ${message}` }, { status: 500 });
+    console.error("[bookings POST] error:", message);
+    return NextResponse.json({ error: "An unexpected error occurred. Please try again later." }, { status: 500 });
   }
 }
 

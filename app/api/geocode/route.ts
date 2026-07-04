@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 /**
  * GET /api/geocode?place=Mumbai%2C+India
@@ -17,6 +18,12 @@ type NominatimResult = {
 };
 
 export async function GET(request: NextRequest) {
+    // Rate limit: 30 requests per minute per IP
+    const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+    if (!rateLimit(ip, 30, 60 * 1000)) {
+        return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const place = (searchParams.get("place") ?? "").trim();
     const city = (searchParams.get("city") ?? "").trim();
@@ -77,6 +84,6 @@ export async function GET(request: NextRequest) {
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error("[geocode] Nominatim fetch failed:", message);
-        return NextResponse.json({ error: `Geocoding failed: ${message}` }, { status: 500 });
+        return NextResponse.json({ error: "Geocoding service unavailable. Please try again." }, { status: 500 });
     }
 }
