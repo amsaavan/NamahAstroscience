@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import type { SiteContent, SiteService } from "@/lib/content-store-local";
+import defaultData from "@/data/content.json";
 
 export default function AdminContentPage() {
   const router = useRouter();
@@ -26,6 +27,9 @@ export default function AdminContentPage() {
         if (data.content) {
           setContent(data.content);
           setInitialColor(data.content.themeColor || "#f4c430");
+        } else {
+          setContent(defaultData as SiteContent);
+          setInitialColor(defaultData.themeColor || "#f4c430");
         }
         setIsLoading(false);
       })
